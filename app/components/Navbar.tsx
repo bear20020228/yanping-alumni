@@ -41,27 +41,28 @@ export default function Navbar() {
     if (profile.role === 'admin') return <span className="text-red-800 text-xs bg-red-200 px-2.5 py-1 rounded font-bold">管理員</span>;
     if (profile.status === 'pending') return <span className="text-yellow-800 text-xs bg-yellow-100 px-2.5 py-1 rounded font-bold">審核中</span>;
     if (profile.status === 'approved' && profile.is_paid) return <span className="text-green-800 text-xs bg-green-200 px-2.5 py-1 rounded font-bold">正式會員</span>;
-    return <span className="text-blue-100 text-xs bg-blue-900 px-2.5 py-1 rounded">一般會員</span>;
+    return <span className="text-green-100 text-xs bg-green-900 px-2.5 py-1 rounded">一般會員</span>; // 改為綠色系
   };
 
   return (
     <>
-      <nav className="bg-[#003366] text-white sticky top-0 z-50 shadow-lg border-b border-blue-900">
+      {/* 導覽列主體：換上 Yanping Green (#004d00) */}
+      <nav className="bg-[#004d00] text-white sticky top-0 z-50 shadow-lg border-b border-green-900">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           
-          {/* 左側 Logo: 點擊回首頁 */}
-          <Link href="/" className="text-2xl font-black tracking-widest text-white hover:text-blue-200 transition-colors">
+          {/* 左側 Logo */}
+          <Link href="/" className="text-2xl font-black tracking-widest text-white hover:text-green-200 transition-colors">
             延平校友總會
           </Link>
           
-          {/* 桌機版選單 (大螢幕顯示 md:flex，小螢幕隱藏 md:hidden) */}
+          {/* 桌機版選單 */}
           <div className="hidden md:flex items-center space-x-6 text-sm font-medium">
-            <Link href="/" className="hover:text-blue-200 transition-colors py-1.5">首頁</Link>
-            <Link href="/history" className="hover:text-blue-200 transition-colors py-1.5">時光走廊</Link>
-            <Link href="/map" className="hover:text-blue-200 transition-colors py-1.5">企業地圖</Link>
-            <Link href="/events" className="hover:text-blue-200 transition-colors py-1.5 text-orange-300 font-bold">活動報名</Link>
+            <Link href="/" className="hover:text-green-200 transition-colors py-1.5">首頁</Link>
+            <Link href="/history" className="hover:text-green-200 transition-colors py-1.5">時光走廊</Link>
+            <Link href="/map" className="hover:text-green-200 transition-colors py-1.5">企業地圖</Link>
+            <Link href="/events" className="hover:text-yellow-200 transition-colors py-1.5 text-yellow-300 font-bold">活動報名</Link>
             
-            <div className="w-px h-5 bg-blue-700 opacity-60"></div>
+            <div className="w-px h-5 bg-green-700 opacity-60"></div>
             
             {user ? (
               <div className="flex items-center space-x-4">
@@ -75,24 +76,24 @@ export default function Navbar() {
                 <button onClick={handleLogout} className="hover:text-red-300 transition-colors font-bold text-sm">登出</button>
               </div>
             ) : (
-              <Link href="/login" className="hover:text-blue-200 transition-colors py-1.5">會員登入</Link>
+              <Link href="/login" className="hover:text-green-200 transition-colors py-1.5">會員登入</Link>
             )}
             
-            <Link href="/register" className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm text-sm">
+            <Link href="/register" className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm text-sm transform hover:scale-105 duration-300">
               加入企業地圖
             </Link>
           </div>
 
-          {/* 手機版漢堡按鈕 (小螢幕顯示 md:hidden，大螢幕隱藏 md:flex) */}
+          {/* 手機版漢堡按鈕 */}
           <button 
             className="md:hidden text-white focus:outline-none p-1.5 z-50 relative" 
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> // 叉叉圖示 X
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> // 叉叉
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /> // 三條線圖示 ☰
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /> // 三條線
               )}
             </svg>
           </button>
@@ -101,18 +102,18 @@ export default function Navbar() {
 
       {/* 手機版側邊選單：縮進去模式 (Sliding Sidebar) */}
       <div 
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        className={`fixed inset-0 bg-black/60 z-40 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
         onClick={() => setIsMenuOpen(false)}
       />
       <div 
-        className={`fixed inset-y-0 right-0 z-50 w-72 bg-[#002244] border-l border-blue-900 shadow-xl p-6 pt-24 space-y-6 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 z-50 w-72 bg-[#003300] border-l border-green-900 shadow-xl p-6 pt-24 space-y-6 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <Link href="/" className="block text-lg font-medium hover:text-blue-200 text-white" onClick={() => setIsMenuOpen(false)}>首頁</Link>
-        <Link href="/history" className="block text-lg font-medium hover:text-blue-200 text-white" onClick={() => setIsMenuOpen(false)}>時光走廊</Link>
-        <Link href="/map" className="block text-lg font-medium hover:text-blue-200 text-white" onClick={() => setIsMenuOpen(false)}>企業地圖</Link>
-        <Link href="/events" className="block text-lg font-bold text-orange-300" onClick={() => setIsMenuOpen(false)}>活動報名</Link>
+        <Link href="/" className="block text-lg font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>首頁</Link>
+        <Link href="/history" className="block text-lg font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>時光走廊</Link>
+        <Link href="/map" className="block text-lg font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>企業地圖</Link>
+        <Link href="/events" className="block text-lg font-bold text-yellow-300" onClick={() => setIsMenuOpen(false)}>活動報名</Link>
         
-        <div className="h-px w-full bg-blue-800 my-6"></div>
+        <div className="h-px w-full bg-green-800 my-6"></div>
         
         {user ? (
           <div className="space-y-6">
@@ -126,10 +127,10 @@ export default function Navbar() {
             <button onClick={handleLogout} className="block text-red-300 font-bold w-full text-left">登出</button>
           </div>
         ) : (
-          <Link href="/login" className="block text-base font-medium hover:text-blue-200 text-white" onClick={() => setIsMenuOpen(false)}>會員登入</Link>
+          <Link href="/login" className="block text-base font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>會員登入</Link>
         )}
         
-        <Link href="/register" className="block w-full text-center mt-6 bg-white text-[#003366] px-5 py-3.5 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg" onClick={() => setIsMenuOpen(false)}>
+        <Link href="/register" className="block w-full text-center mt-6 bg-white text-[#004d00] px-5 py-3.5 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg" onClick={() => setIsMenuOpen(false)}>
           加入企業地圖
         </Link>
       </div>

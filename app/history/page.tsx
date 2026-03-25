@@ -3,6 +3,7 @@
 import Navbar from '../components/Navbar';
 
 export default function HistoryPage() {
+  // 延平歷史資料：完美嵌入你上傳的真實老照片
   const timelineEvents = [
     {
       year: '1946',
@@ -20,7 +21,7 @@ export default function HistoryPage() {
       year: '1959',
       title: '正式改制中學',
       description: '正式改制為「台北市私立延平高級中學」，成為台北市首屈一指的私立名校，開始孕育無數優秀校友。',
-      image: '/placeholder_middle_years.jpg'
+      image: '/placeholder_middle_years.jpg' // Placeholder
     },
     {
       year: '2020',
@@ -34,24 +35,24 @@ export default function HistoryPage() {
     <main className="min-h-screen bg-white">
       <Navbar />
       
-      {/* 專業美化：專業校史Header區塊 */}
+      {/* 專業美化：專業校史Header區塊 - 使用延平綠遮罩 */}
       <div className="relative h-[50vh] bg-cover bg-center" style={{ backgroundImage: "url('/LINE_ALBUM_待選延平桌曆照片_260326_2.jpg')" }}>
-        {/* 遮罩：提升質感，提升文字清晰 */}
-        <div className="absolute inset-0 bg-[#003366]/80" />
+        {/* 延平綠遮罩 (#004d00/80) */}
+        <div className="absolute inset-0 bg-[#004d00]/80" />
         
         <div className="relative max-w-7xl mx-auto px-6 h-full flex flex-col justify-center items-center text-center text-white pt-16">
           <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
             延平時光走廊
           </h1>
-          <p className="max-w-2xl text-lg md:text-xl text-blue-100 mb-12 font-medium leading-relaxed">
+          <p className="max-w-2xl text-lg md:text-xl text-green-100 mb-12 font-medium leading-relaxed">
             凝聚八十載歲月，匯聚全球延平人的智慧與榮耀。
           </p>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto py-24 px-6">
-        {/* 時間軸主體 */}
-        <div className="relative border-l-4 border-blue-900 ml-3 md:ml-1/2">
+        {/* 時間軸主體：換成延平綠系 (#004d00) */}
+        <div className="relative border-l-4 border-[#004d00] ml-3 md:ml-1/2">
           {timelineEvents.map((event, index) => (
             <div key={index} className="mb-16 ml-8 relative group">
               {/* 時間軸上的圓點 */}
@@ -59,7 +60,8 @@ export default function HistoryPage() {
               
               <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm transition-all hover:shadow-2xl hover:border-slate-200 duration-300">
                 <span className="text-orange-600 font-black text-2xl tracking-wider mb-2 block">{event.year}</span>
-                <h3 className="text-3xl font-bold text-[#003366] mb-4">{event.title}</h3>
+                {/* 標題換成延平綠 (#004d00) */}
+                <h3 className="text-3xl font-bold text-[#004d00] mb-4">{event.title}</h3>
                 <p className="text-slate-600 text-lg leading-relaxed mb-6 font-medium">{event.description}</p>
                 
                 {/* 使用你上傳照片的圖片區塊 */}
