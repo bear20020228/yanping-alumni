@@ -48,12 +48,12 @@ export default function Navbar() {
     <nav className="bg-[#003366] text-white sticky top-0 z-50 shadow-md">
       <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
         
-        {/* 左側 Logo */}
+        {/* 左側 Logo: 點擊回首頁 */}
         <Link href="/" className="text-xl font-black tracking-wider hover:text-blue-200 transition-colors">
           延平校友總會
         </Link>
         
-        {/* 桌機版選單 (大螢幕顯示，小螢幕隱藏) */}
+        {/* 桌機版選單 (大螢幕顯示 md:flex，小螢幕隱藏 md:hidden) */}
         <div className="hidden md:flex items-center space-x-6 text-sm font-medium">
           <Link href="/" className="hover:text-blue-200 transition-colors">首頁</Link>
           <Link href="/history" className="hover:text-blue-200 transition-colors">時光走廊</Link>
@@ -75,12 +75,12 @@ export default function Navbar() {
             <Link href="/login" className="hover:text-blue-200 transition-colors">會員登入</Link>
           )}
           
-          <Link href="/register" className="bg-white text-[#003366] px-5 py-2 rounded-full font-bold hover:bg-blue-50 transition-colors shadow-sm">
+          <Link href="/register" className="bg-white text-[#003366] px-5 py-2 rounded-full font-bold hover:bg-blue-50 transition-colors shadow-sm text-sm">
             加入企業地圖
           </Link>
         </div>
 
-        {/* 手機版漢堡按鈕 (小螢幕顯示，大螢幕隱藏) */}
+        {/* 手機版漢堡按鈕 (小螢幕顯示 md:hidden，大螢幕隱藏 md:flex) */}
         <button 
           className="md:hidden text-white focus:outline-none" 
           onClick={() => setIsMenuOpen(!isMenuOpen)}
