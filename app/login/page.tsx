@@ -3,122 +3,82 @@
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true); // 控制顯示「登入」還是「註冊」
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const router = useRouter();
 
-  // 表單資料
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    classYear: ''
-  });
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
     try {
-      if (isLogin) {
-        // 【登入邏輯】
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (error) throw error;
-        
-        alert("登入成功！");
-    window.location.href = '/';
-      } else {
-        // 【註冊邏輯】
-        // 1. 先建立帳號密碼
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (authError) throw authError;
-
-        // 2. 帳號建立成功後，把資料寫入 profiles 表
-        if (authData.user) {
-          const { error: profileError } = await supabase.from('profiles').insert([
-            {
-              id: authData.user.id, // 綁定剛剛建立的帳號 ID
-              full_name: formData.fullName,
-              class_year: parseInt(formData.classYear),
-              // status, is_paid, role 這些在資料庫已經有預設值了，不用特別寫
-            }
-          ]);
-          if (profileError) throw profileError;
-        }
-
-        alert("註冊成功！您的帳號目前正在審核中。");
-        setIsLogin(true); // 註冊完切換回登入畫面
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      
+      // 登入成功後，直接導向個人的「數位校友卡」頁面
+      router.push('/profile');
     } catch (error: any) {
-      setMessage("發生錯誤：" + error.message);
+      setMessage("登入失敗，請檢查 Email 或密碼是否正確。");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
-      <div className="max-w-md mx-auto mt-20 p-8 bg-white shadow-xl rounded-3xl border border-slate-100">
-        <h1 className="text-3xl font-black text-center text-[#003366] mb-8">
-          {isLogin ? "校友登入" : "註冊校友帳號"}
-        </h1>
+      <div className="flex-grow flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full p-8 bg-white shadow-xl rounded-3xl border border-slate-100 relative overflow-hidden">
+          
+          {/* 視覺裝飾 */}
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-green-500 opacity-10 rounded-full blur-2xl pointer-events-none"></div>
 
-        {message && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium">
-            {message}
+          <div className="text-center mb-8 relative z-10">
+            <h1 className="text-3xl font-black text-[#004d00]">校友登入</h1>
+            <p className="text-sm text-slate-500 mt-2">歡迎回到延平校友總會</p>
           </div>
-        )}
 
-        <form onSubmit={handleAuth} className="space-y-5">
-          {!isLogin && (
-            <>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">真實姓名</label>
-                <input required type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black" 
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">畢業屆次</label>
-                <input required type="number" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black" placeholder="例如：55"
-                  onChange={(e) => setFormData({...formData, classYear: e.target.value})} />
-              </div>
-            </>
+          {message && (
+            <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm font-bold text-center">
+              {message}
+            </div>
           )}
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Email (將作為登入帳號)</label>
-            <input required type="email" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black" 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} />
+          <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Email 登入帳號</label>
+              <input required type="email" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black focus:ring-2 focus:ring-[#004d00] outline-none transition-all" 
+                onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">密碼</label>
+              <input required type="password" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black focus:ring-2 focus:ring-[#004d00] outline-none transition-all" 
+                onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            </div>
+
+            <button disabled={loading} type="submit" className="w-full bg-[#004d00] text-white py-4 rounded-xl font-black text-lg hover:bg-green-900 transition-all shadow-md mt-2 disabled:bg-slate-400">
+              {loading ? "驗證中..." : "登入系統"}
+            </button>
+          </form>
+
+          {/* 乾淨俐落的動線導引 */}
+          <div className="mt-8 text-center border-t border-slate-100 pt-6 relative z-10">
+            <p className="text-slate-500 text-sm mb-3">還沒有專屬的數位校友卡嗎？</p>
+            <Link href="/register" className="inline-block bg-orange-50 text-orange-600 font-bold px-6 py-2 rounded-full hover:bg-orange-100 transition-colors">
+              前往註冊新帳號 &rarr;
+            </Link>
           </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">密碼 (至少 6 碼)</label>
-            <input required type="password" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-black" 
-              onChange={(e) => setFormData({...formData, password: e.target.value})} />
-          </div>
-
-          <button disabled={loading} type="submit" className="w-full bg-[#003366] text-white py-4 rounded-xl font-black text-lg hover:bg-blue-800 transition-all">
-            {loading ? "處理中..." : (isLogin ? "登入" : "註冊並送出審核")}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button 
-            onClick={() => { setIsLogin(!isLogin); setMessage(""); }} 
-            className="text-slate-500 hover:text-[#003366] font-medium text-sm transition-colors"
-          >
-            {isLogin ? "還沒有帳號？點此註冊" : "已經有帳號了？點此登入"}
-          </button>
         </div>
       </div>
     </main>
