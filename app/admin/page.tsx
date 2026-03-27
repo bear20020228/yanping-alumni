@@ -17,7 +17,6 @@ export default function AdminPage() {
 
   const fetchAdminData = async () => {
     setLoading(true);
-    // 1. 檢查權限
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
@@ -30,29 +29,40 @@ export default function AdminPage() {
     
     setIsAdmin(true);
 
-    // 2. 抓取待審核的會員 (status = 'pending')
-    const { data: users } = await supabase.from('profiles').select('*').eq('status', 'pending');
-    if (users) setPendingUsers(users);
+    // ... 前面的身分驗證保留 ...
+    setIsAdmin(true);
 
-    // 3. 抓取待審核的企業 (status = 'pending')
-    const { data: businesses } = await supabase.from('alumni_businesses').select('*').eq('status', 'pending');
-    if (businesses) setPendingBusinesses(businesses);
+    // 暴力全抓，直接看資料庫底層到底吐什麼出來
+    const { data: allUsers, error: userError } = await supabase.from('profiles').select('*');
+    console.log("👉 全部會員資料:", allUsers, "錯誤:", userError);
+    
+    if (allUsers) {
+      // 用前端過濾，排除管理員以及已核准的人，剩下的就是待審核
+      const toReview = allUsers.filter(u => u.role !== 'admin' && u.status !== 'approved');
+      setPendingUsers(toReview);
+    }
+
+    const { data: allBiz, error: bizError } = await supabase.from('alumni_businesses').select('*');
+    console.log("👉 全部企業資料:", allBiz, "錯誤:", bizError);
+    
+    if (allBiz) {
+      const bizToReview = allBiz.filter(b => b.status !== 'approved');
+      setPendingBusinesses(bizToReview);
+    }
 
     setLoading(false);
   };
 
-  // 核准會員並標記已繳費
   const approveUser = async (id: string) => {
     await supabase.from('profiles').update({ status: 'approved', is_paid: true }).eq('id', id);
     alert('會員已核准！');
-    fetchAdminData(); // 重新整理列表
+    fetchAdminData();
   };
 
-  // 核准企業上架
   const approveBusiness = async (id: number) => {
     await supabase.from('alumni_businesses').update({ status: 'approved' }).eq('id', id);
     alert('企業已核准上架！');
-    fetchAdminData(); // 重新整理列表
+    fetchAdminData();
   };
 
   if (loading) return <div className="p-10 text-center">載入中...</div>;
@@ -74,7 +84,6 @@ export default function AdminPage() {
         <h1 className="text-3xl font-black text-[#003366] mb-8">🛠️ 總會管理後台</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* 左側：會員審核區 */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 className="text-xl font-bold text-slate-800 mb-4">待核准會員 ({pendingUsers.length})</h2>
             {pendingUsers.length === 0 ? <p className="text-slate-500 text-sm">目前沒有待審核的會員。</p> : (
@@ -82,7 +91,7 @@ export default function AdminPage() {
                 {pendingUsers.map(user => (
                   <div key={user.id} className="p-4 border rounded-xl flex justify-between items-center bg-slate-50">
                     <div>
-                      <p className="font-bold">{user.full_name} <span className="text-xs text-slate-500">({user.class_year} 屆)</span></p>
+                      <p className="font-bold">{user.full_name || '無姓名'} <span className="text-xs text-slate-500">({user.class_year} 屆)</span></p>
                     </div>
                     <button onClick={() => approveUser(user.id)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700">
                       核准並確認繳費
@@ -93,7 +102,6 @@ export default function AdminPage() {
             )}
           </div>
 
-          {/* 右側：企業審核區 */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 className="text-xl font-bold text-slate-800 mb-4">待核准企業 ({pendingBusinesses.length})</h2>
             {pendingBusinesses.length === 0 ? <p className="text-slate-500 text-sm">目前沒有待上架的企業。</p> : (
