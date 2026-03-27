@@ -70,6 +70,10 @@ export default function Navbar() {
                   <span className="text-sm font-bold text-white">{profile?.full_name}</span>
                   {renderStatusTag()}
                 </div>
+                
+                {/* 桌機版：數位校友卡 */}
+                <Link href="/profile" className="text-green-200 font-bold hover:text-white transition-colors">數位校友卡</Link>
+                
                 {profile?.role === 'admin' && (
                   <Link href="/admin" className="text-orange-400 font-bold hover:text-orange-300 transition-colors">管理後台</Link>
                 )}
@@ -121,13 +125,13 @@ export default function Navbar() {
               <span className="font-bold text-lg text-white">{profile?.full_name}</span>
               {renderStatusTag()}
             </div>
+            
+            {/* 手機版：數位校友卡 */}
+            <Link href="/profile" className="block text-green-200 font-bold hover:text-white transition-colors" onClick={() => setIsMenuOpen(false)}>數位校友卡</Link>
+
             {profile?.role === 'admin' && (
               <Link href="/admin" className="block text-orange-400 font-bold" onClick={() => setIsMenuOpen(false)}>管理後台</Link>
             )}
-
-            <Link href="/profile" className="font-bold hover:text-orange-400 transition-colors">
-  數位校友卡
-</Link>
 
             <button onClick={handleLogout} className="block text-red-300 font-bold w-full text-left">登出</button>
           </div>
