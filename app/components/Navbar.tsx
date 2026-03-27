@@ -83,9 +83,9 @@ export default function Navbar() {
               <Link href="/login" className="hover:text-green-200 transition-colors py-1.5">會員登入</Link>
             )}
             
-            <Link href="/register" className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm text-sm transform hover:scale-105 duration-300">
-              加入企業地圖
-            </Link>
+            <Link href={user ? "/add-business" : "/login"} className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm text-sm transform hover:scale-105 duration-300">
+  加入企業地圖
+</Link>
           </div>
 
           {/* 手機版漢堡按鈕 */}
@@ -140,9 +140,9 @@ export default function Navbar() {
           <Link href="/login" className="block text-base font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>會員登入</Link>
         )}
         
-        <Link href="/register" className="block w-full text-center mt-6 bg-white text-[#004d00] px-5 py-3.5 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg" onClick={() => setIsMenuOpen(false)}>
-          加入企業地圖
-        </Link>
+        <Link href={user ? "/add-business" : "/login"} className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-bold hover:bg-orange-600 transition-colors shadow-sm text-sm transform hover:scale-105 duration-300">
+  加入企業地圖
+</Link>
       </div>
     </>
   );
