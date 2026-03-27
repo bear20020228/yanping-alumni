@@ -22,19 +22,32 @@ export default function AddBusinessPage() {
     checkUser();
   }, [router]);
 
-  // 將地址轉換為經緯度 (使用免費的 OpenStreetMap API)
-  const getCoordinates = async (address: string) => {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  // 強化版：座標轉換（具備自動退階機制）
+  const getCoordinates = async (fullAddress: string) => {
+    const searchTerms = [
+      fullAddress, // 1. 先試完整地址
+      fullAddress.split('號')[0], // 2. 失敗的話，去掉門牌號碼試試（只留到路段）
+      fullAddress.substring(0, fullAddress.indexOf('區') + 1) // 3. 再失敗，至少定位到行政區
+    ];
+
+    for (const term of searchTerms) {
+      if (!term) continue;
+      try {
+        // 加入 User-Agent 是 Nominatim 的要求，沒加可能會被封鎖
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(term)}&limit=1`,
+          { headers: { 'User-Agent': 'YanpingAlumniApp/1.0' } }
+        );
+        const data = await res.json();
+        if (data && data.length > 0) {
+          console.log(`成功定位於：${term}`);
+          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+      } catch (err) {
+        console.error("搜尋發生錯誤", err);
       }
-      return null;
-    } catch (err) {
-      console.error("座標轉換失敗", err);
-      return null;
     }
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
