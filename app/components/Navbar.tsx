@@ -124,9 +124,15 @@ export default function Navbar() {
             {profile?.role === 'admin' && (
               <Link href="/admin" className="block text-orange-400 font-bold" onClick={() => setIsMenuOpen(false)}>管理後台</Link>
             )}
+
+            <Link href="/profile" className="font-bold hover:text-orange-400 transition-colors">
+  數位校友卡
+</Link>
+
             <button onClick={handleLogout} className="block text-red-300 font-bold w-full text-left">登出</button>
           </div>
         ) : (
+          
           <Link href="/login" className="block text-base font-medium hover:text-green-200 text-white" onClick={() => setIsMenuOpen(false)}>會員登入</Link>
         )}
         
