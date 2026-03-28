@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 
 export default function AddBusinessPage() {
   const [name, setName] = useState('');
+  const [category, setCategory] = useState(''); // 新增：產業類別
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
 
-  // 確保只有登入的會員才能進來
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -22,18 +22,16 @@ export default function AddBusinessPage() {
     checkUser();
   }, [router]);
 
-  // 強化版：座標轉換（具備自動退階機制）
   const getCoordinates = async (fullAddress: string) => {
     const searchTerms = [
-      fullAddress, // 1. 先試完整地址
-      fullAddress.split('號')[0], // 2. 失敗的話，去掉門牌號碼試試（只留到路段）
-      fullAddress.substring(0, fullAddress.indexOf('區') + 1) // 3. 再失敗，至少定位到行政區
+      fullAddress, 
+      fullAddress.split('號')[0], 
+      fullAddress.substring(0, fullAddress.indexOf('區') + 1) 
     ];
 
     for (const term of searchTerms) {
       if (!term) continue;
       try {
-        // 加入 User-Agent 是 Nominatim 的要求，沒加可能會被封鎖
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(term)}&limit=1`,
           { headers: { 'User-Agent': 'YanpingAlumniApp/1.0' } }
@@ -56,28 +54,33 @@ export default function AddBusinessPage() {
     setError('');
 
     try {
-      // 1. 先把地址拿去換算座標
+      // 1. 送出前再次確認 Session，抓取 user_id
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('登入已逾期，請重新登入');
+
       const coords = await getCoordinates(address);
       if (!coords) {
         throw new Error('無法辨識該地址，請嘗試輸入更完整的地址（包含縣市與區）。');
       }
 
-      // 2. 寫入企業資料庫 (帶上轉換好的座標)
+      // 2. 寫入資料庫，補上 user_id 與 category
       const { error: insertError } = await supabase.from('alumni_businesses').insert([
         {
+          user_id: session.user.id, // 核心修復：綁定建立者
           name,
+          category,                 // 核心修復：補齊欄位
           address,
           description,
           lat: coords.lat,
           lng: coords.lng,
-          status: 'pending' // 預設為待審核
+          status: 'pending' 
         }
       ]);
 
       if (insertError) throw insertError;
 
       alert('企業資料已送出！請等待總會審核，核准後將會在地圖上發光顯示。');
-      router.push('/map'); // 送出後導向地圖頁面
+      router.push('/profile'); // 送出後導向個人頁面，方便直接查看「我的企業」
       
     } catch (err: any) {
       setError(err.message || '發生未知錯誤');
@@ -104,6 +107,13 @@ export default function AddBusinessPage() {
               <input required type="text" value={name} onChange={(e) => setName(e.target.value)} 
                 className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" 
                 placeholder="例如：延平牛肉麵" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">產業類別</label>
+              <input required type="text" value={category} onChange={(e) => setCategory(e.target.value)} 
+                className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" 
+                placeholder="例如：餐飲業、科技業、法律服務" />
             </div>
 
             <div>

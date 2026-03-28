@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 強制修正所有輸入框與文字區域的顏色 */
+input, textarea, select {
+  color: #0f172a !important; 
+  background-color: #ffffff !important; 
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important; 
+  opacity: 1;
+}
+
+/* 強制壓低地圖容器的 z-index，避免遮擋導覽列選單 */
+.leaflet-container {
+  z-index: 10 !important;
+}
+
+/* 如果你的地圖外層有自訂的容器，也可以強制設定 */
+#map, .map-container {
+  z-index: 10 !important;
+}
