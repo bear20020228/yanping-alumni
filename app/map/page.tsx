@@ -46,7 +46,7 @@ export default function MapPage() {
       <div className="max-w-6xl mx-auto py-12 px-6">
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
           <div>
-            <h1 className="text-4xl font-black text-white tracking-widest mb-3 italic uppercase">星海地圖</h1>
+            <h1 className="text-4xl font-black text-white tracking-widest mb-3 italic uppercase">螢光點點地圖</h1>
             <p className="text-green-400 text-sm font-bold flex items-center gap-2">
               <span className="animate-pulse">●</span> 
               點擊探索校友企業，結帳出示「數位校友卡」享專屬優惠
