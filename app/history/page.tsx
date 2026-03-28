@@ -8,29 +8,39 @@ import { useRouter } from 'next/navigation';
 export default function HistoryPage() {
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter(); // 引入 router 準備做導向
+  const router = useRouter();
 
-  // 1. 靜態正史資料：僅保留最後一張照片
+  // 1. 根據詳細校史整理的靜態資料
   const timelineEvents = [
     {
+      year: '1945',
+      title: '播種：培養大臣的夙願',
+      description: '日本投降後，創辦人朱昭陽與宋進英先生秉持「生命的意義，不在當大臣，而在培養大臣」的理念，在劉明先生等企業家資助下籌創「延平大學」，並由董事長林獻堂先生命名，紀念鄭成功不屈不撓的精神。'
+    },
+    {
       year: '1946',
-      title: '延平學院誕生：荒野暗夜中的螢光',
-      description: '創辦人朱昭陽、宋進英先生秉持「生命的意義，不在當大臣，而在培養大臣」之理念，在林獻堂先生及企業界資助下創立。創校典禮於雙十節夜晚舉行，一千一百多名學生在燭影下聆聽朱先生訓詞：「我們要當荒野暗夜中的螢光」。'
+      title: '誕生：荒野暗夜中的螢光',
+      description: '九月正式招收經、法兩科學生。雙十節夜晚在開南商工操場舉行創校典禮，一千一百多名學子在燭影中聆聽朱先生訓詞：「我們要當荒野暗夜中的螢光」。這是台灣人創辦的第一所大學。'
     },
     {
       year: '1947',
-      title: '動盪歲月：消失在塵埃中的五個月',
-      description: '二二八事件爆發，延平學院因學生滿腔愛鄉血忱，遭軍隊假借名義命令停辦。五個多月的蓊鬱榮耀化作創痕，延平學院在時空中消失了。朱昭陽先生隨即積極奔走，在風雨中守護台灣人的精神支柱。'
+      title: '創傷：消失在塵埃中的五個月',
+      description: '二二八事件爆發，校園遭軍隊假借名義命令停辦。五個月的蓊鬱榮耀化作創痕，師生四散，延平學院在時空中彷彿成了消失的傳說。'
     },
     {
       year: '1948',
-      title: '艱難復校：補習學校名義先行',
-      description: '三十七年九月以「延平高中補習學校」名義先行復校。雖然地位低微，但師資陣容極其堅強，包含許多知名教授如前總統李登輝先生。民國四十二年，終於遷入現今建國南路校址。'
+      title: '韌性：補習學校艱難復校',
+      description: '朱昭陽先生積極奔走，九月以「延平高中補習學校」名義先行復校。雖地位低微但評價極高，包含前總統李登輝先生等多位碩彥均曾於此任教，傳承知命感與求知熱忱。'
+    },
+    {
+      year: '1953',
+      title: '根植：建國南路現址立基',
+      description: '民國四十二年，延平正式在現今的建國南路校地興建校舍。這條河流找到了源頭，開始在台北的心臟地帶紮根，繼續為台灣作育人才。'
     },
     {
       year: '1959 - 至今',
-      title: '邁向巔峰：弦歌不輟，平實紮根',
-      description: '四十八年正式立案中學辦理至今。延平從大學源頭走來，篤志力行「品德不可壞、才智不可無、群性不可失」之風範，躋身全國私校之首。新大樓的落成，更象徵延平精神延綿不絕，邁向新的顛峰。',
+      title: '巔峰：弦歌不輟，私校之首',
+      description: '民國四十八年正式立案辦理中學。延平人體會「品德不可壞、才智不可無、群性不可失」之校訓，紮根成長，躋身全國私校之首，延綿不絕。',
       image: '/LINE_ALBUM_待選延平桌曆照片_260326_2.jpg'
     }
   ];
@@ -48,18 +58,14 @@ export default function HistoryPage() {
     fetchPhotos();
   }, []);
 
-  // --- 新增：上傳按鈕攔截器 ---
   const handleUploadClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    
-    // 即時檢查當前登入狀態
     const { data: { session } } = await supabase.auth.getSession();
-    
     if (!session) {
       alert('請先登入校友帳號，才能上傳珍貴的老照片喔！');
-      router.push('/login'); // 沒登入就踢去登入頁
+      router.push('/login');
     } else {
-      router.push('/history/upload'); // 有登入就放行去上傳頁
+      router.push('/history/upload');
     }
   };
 
@@ -80,37 +86,36 @@ export default function HistoryPage() {
       </div>
 
       <div className="max-w-5xl mx-auto py-20 px-6">
-        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-green-100 mb-24 text-slate-700 leading-loose">
-          <h2 className="text-2xl font-bold text-[#004d00] mb-6 border-l-4 border-orange-500 pl-4">創校理念與精神</h2>
-          <p className="mb-6">
-            延平大學由朱昭陽先生與宋進英先生創立，敦請林獻堂先生為董事長。創校董事包含林獻堂、蔡培火、楊肇嘉、杜聰明、吳三連等熱心教育人士，共同為台灣人創辦了第一所大學。
+        {/* 創校精神 */}
+        <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-green-100 mb-24 text-slate-700 leading-loose">
+          <h2 className="text-2xl font-black text-[#004d00] mb-6 border-l-8 border-orange-500 pl-4 uppercase tracking-tighter">創校理念與精神</h2>
+          <p className="mb-6 font-medium">
+            創立於民國三十五年，創校董事包含 **林獻堂、蔡培火、楊肇嘉、杜聰明、吳三連、丘念台、游彌堅** 等熱心教育人士，共同為台灣人創辦了第一所大學。
           </p>
-          <blockquote className="bg-green-50 p-6 rounded-2xl italic text-[#004d00] font-medium my-8 text-center">
+          <blockquote className="bg-green-50 p-8 rounded-[2rem] italic text-[#004d00] font-bold my-8 text-center text-xl shadow-inner">
             「給這混亂、昏昧的社會提供一線光明，我們要當荒野暗夜中的螢光。」 —— 朱昭陽
           </blockquote>
         </div>
 
         {/* 正史時間軸 */}
-        <div className="space-y-16 mb-32">
+        <div className="space-y-16 mb-32 relative">
+          {/* 垂直軸線裝飾 */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1 bg-slate-200 hidden md:block" />
+          
           {timelineEvents.map((event, index) => (
-            <div key={index} className="flex flex-col md:flex-row gap-8 items-center md:items-start group">
-              <div className="w-full md:w-1/3 text-center md:text-right">
-                <span className="text-5xl font-black text-orange-500/30 group-hover:text-orange-500 transition-colors duration-500">
+            <div key={index} className={`flex flex-col md:flex-row gap-8 items-center md:items-start group relative z-10 ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+              <div className={`w-full md:w-1/2 text-center ${index % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
+                <span className="text-6xl font-black text-[#004d00]/10 group-hover:text-orange-500/20 transition-all duration-700">
                   {event.year}
                 </span>
               </div>
               
-              <div className="w-full md:w-2/3 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm group-hover:shadow-2xl group-hover:border-green-200 transition-all duration-500">
-                <h3 className="text-2xl font-bold text-[#004d00] mb-4">{event.title}</h3>
-                <p className="text-slate-600 mb-6 leading-relaxed">{event.description}</p>
-                
+              <div className="w-full md:w-1/2 bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm group-hover:shadow-2xl group-hover:-translate-y-2 transition-all duration-500">
+                <h3 className="text-2xl font-black text-[#004d00] mb-4 tracking-tight">{event.title}</h3>
+                <p className="text-slate-600 mb-6 leading-relaxed font-medium">{event.description}</p>
                 {event.image && (
                   <div className="rounded-2xl overflow-hidden shadow-lg aspect-video">
-                    <img 
-                      src={event.image} 
-                      alt={event.title} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                    />
+                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   </div>
                 )}
               </div>
@@ -119,33 +124,32 @@ export default function HistoryPage() {
         </div>
 
         {/* 校友回憶區塊 */}
-        <div className="border-t border-slate-200 pt-20">
+        <div className="border-t-2 border-slate-200 pt-20">
           <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
             <div className="text-center md:text-left">
-              <h2 className="text-3xl font-black text-[#004d00]">校友回憶走廊</h2>
-              <p className="text-slate-500 mt-2 italic text-sm">那些年，我們在建國南路的日子...</p>
+              <h2 className="text-3xl font-black text-[#004d00] uppercase tracking-tighter">校友回憶走廊</h2>
+              <p className="text-slate-500 mt-2 italic font-medium">河流有方向，就因為它有源頭。我們在建國南路的日子...</p>
             </div>
-            {/* 改成 button 並綁定攔截器 */}
             <button 
               onClick={handleUploadClick}
-              className="bg-orange-500 text-white px-8 py-3 rounded-full font-black hover:bg-orange-600 transition-all shadow-lg transform hover:-translate-y-1"
+              className="bg-orange-500 text-white px-10 py-4 rounded-full font-black hover:bg-orange-600 transition-all shadow-lg active:scale-95"
             >
               + 我要投稿老照片
             </button>
           </div>
 
           {loading ? (
-            <div className="text-center py-20 italic text-slate-400">正在沖洗回憶照片...</div>
+            <div className="text-center py-20 italic text-slate-400 font-bold">正在沖洗回憶照片...</div>
           ) : userPhotos.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 bg-white rounded-3xl border border-dashed">
+            <div className="text-center py-16 text-slate-400 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 font-bold">
               目前尚無校友投稿，期待您的第一張珍貴回憶。
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               {userPhotos.map((photo) => (
-                <div key={photo.id} className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all border border-slate-100 flex flex-col">
+                <div key={photo.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all border border-slate-100 flex flex-col group">
                   <div className="aspect-[4/3] overflow-hidden">
-                    <img src={photo.url} className="w-full h-full object-cover" alt="Alumni Photo" />
+                    <img src={photo.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Alumni Photo" />
                   </div>
                   <div className="p-8">
                     <div className="flex items-center gap-2 mb-4">
@@ -153,12 +157,12 @@ export default function HistoryPage() {
                         民國 {photo.year_taken - 1911} 年 / 西元 {photo.year_taken}
                       </span>
                     </div>
-                    <p className="text-slate-700 leading-relaxed text-sm mb-6">
+                    <p className="text-slate-700 leading-relaxed font-medium mb-6 line-clamp-4">
                       {photo.description}
                     </p>
                     <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
-                      <span className="text-[10px] text-slate-400 italic">提供者：{photo.profiles?.full_name || '校友'}</span>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">Verified Memory</span>
+                      <span className="text-[10px] text-slate-400 font-bold italic uppercase">By: {photo.profiles?.full_name || 'Alumni'}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-black tracking-widest uppercase">Memory Verified</span>
                     </div>
                   </div>
                 </div>
@@ -167,19 +171,18 @@ export default function HistoryPage() {
           )}
         </div>
 
-        <div className="mt-32 text-center">
-          <p className="text-[#004d00] font-bold text-xl italic">「品德不可壞，才智不可無，群性不可失」</p>
-          <div className="mt-8 h-1 w-24 bg-orange-500 mx-auto rounded-full"></div>
+        <div className="mt-40 text-center">
+          <p className="text-[#004d00] font-black text-2xl italic tracking-tighter">「品德不可壞，才智不可無，群性不可失」</p>
+          <div className="mt-8 h-1.5 w-32 bg-orange-500 mx-auto rounded-full"></div>
         </div>
       </div>
 
-      {/* 浮動按鈕也改成綁定攔截器 */}
       <button 
         onClick={handleUploadClick}
-        className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-5 pr-7 py-4 rounded-full shadow-[0_20px_50px_rgba(249,115,22,0.4)] hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
+        className="fixed bottom-10 right-10 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-6 pr-8 py-5 rounded-full shadow-2xl hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
       >
         <span className="text-2xl group-hover:rotate-12 transition-transform">📸</span>
-        <span className="font-black tracking-widest text-sm">投稿回憶</span>
+        <span className="font-black tracking-widest text-sm uppercase">投稿回憶</span>
       </button>
     </main>
   );
