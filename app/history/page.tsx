@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function HistoryPage() {
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter(); // 引入 router 準備做導向
 
   // 1. 靜態正史資料：僅保留最後一張照片
   const timelineEvents = [
@@ -46,6 +47,21 @@ export default function HistoryPage() {
     };
     fetchPhotos();
   }, []);
+
+  // --- 新增：上傳按鈕攔截器 ---
+  const handleUploadClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // 即時檢查當前登入狀態
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      alert('請先登入校友帳號，才能上傳珍貴的老照片喔！');
+      router.push('/login'); // 沒登入就踢去登入頁
+    } else {
+      router.push('/history/upload'); // 有登入就放行去上傳頁
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -88,7 +104,6 @@ export default function HistoryPage() {
                 <h3 className="text-2xl font-bold text-[#004d00] mb-4">{event.title}</h3>
                 <p className="text-slate-600 mb-6 leading-relaxed">{event.description}</p>
                 
-                {/* 修正後的圖片渲染邏輯：只有存在路徑時才渲染容器 */}
                 {event.image && (
                   <div className="rounded-2xl overflow-hidden shadow-lg aspect-video">
                     <img 
@@ -110,12 +125,13 @@ export default function HistoryPage() {
               <h2 className="text-3xl font-black text-[#004d00]">校友回憶走廊</h2>
               <p className="text-slate-500 mt-2 italic text-sm">那些年，我們在建國南路的日子...</p>
             </div>
-            <Link 
-              href="/history/upload" 
+            {/* 改成 button 並綁定攔截器 */}
+            <button 
+              onClick={handleUploadClick}
               className="bg-orange-500 text-white px-8 py-3 rounded-full font-black hover:bg-orange-600 transition-all shadow-lg transform hover:-translate-y-1"
             >
               + 我要投稿老照片
-            </Link>
+            </button>
           </div>
 
           {loading ? (
@@ -157,13 +173,14 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      <Link 
-        href="/history/upload" 
+      {/* 浮動按鈕也改成綁定攔截器 */}
+      <button 
+        onClick={handleUploadClick}
         className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-5 pr-7 py-4 rounded-full shadow-[0_20px_50px_rgba(249,115,22,0.4)] hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
       >
         <span className="text-2xl group-hover:rotate-12 transition-transform">📸</span>
         <span className="font-black tracking-widest text-sm">投稿回憶</span>
-      </Link>
+      </button>
     </main>
   );
 }
