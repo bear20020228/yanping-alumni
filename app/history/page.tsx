@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
+import { supabase } from '../../lib/supabase';
+import Link from 'next/link';
 
 export default function HistoryPage() {
+  const [userPhotos, setUserPhotos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1. 你提供的靜態正史資料
   const timelineEvents = [
     {
       year: '1946',
@@ -30,6 +37,21 @@ export default function HistoryPage() {
     }
   ];
 
+  // 2. 動態抓取校友投稿且已核准的照片
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      const { data } = await supabase
+        .from('old_photos')
+        .select('*, profiles(full_name)')
+        .eq('status', 'approved')
+        .order('year_taken', { ascending: true }); // 按年份由舊到新排序
+      
+      if (data) setUserPhotos(data);
+      setLoading(false);
+    };
+    fetchPhotos();
+  }, []);
+
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
@@ -47,24 +69,25 @@ export default function HistoryPage() {
       </div>
 
       <div className="max-w-5xl mx-auto py-20 px-6">
-        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-green-100 mb-20 text-slate-700 leading-loose">
+        {/* 創校理念區 */}
+        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-green-100 mb-24 text-slate-700 leading-loose">
           <h2 className="text-2xl font-bold text-[#004d00] mb-6 border-l-4 border-orange-500 pl-4">創校理念與精神</h2>
           <p className="mb-6">
             延平大學由朱昭陽先生與宋進英先生創立，敦請林獻堂先生為董事長。創校董事包含林獻堂、蔡培火、楊肇嘉、杜聰明、吳三連等熱心教育人士，共同為台灣人創辦了第一所大學。
           </p>
-          <blockquote className="bg-green-50 p-6 rounded-2xl italic text-[#004d00] font-medium my-8">
+          <blockquote className="bg-green-50 p-6 rounded-2xl italic text-[#004d00] font-medium my-8 text-center">
             「給這混亂、昏昧的社會提供一線光明，我們要當荒野暗夜中的螢光。」 —— 朱昭陽
           </blockquote>
-          <p>
-            雖然經歷二二八事件的重創與停辦，延平人像苦行僧一般日日求進，從補校到中學，弦歌不輟。
-          </p>
         </div>
 
-        <div className="space-y-16">
+        {/* 正史時間軸 */}
+        <div className="space-y-16 mb-32">
           {timelineEvents.map((event, index) => (
             <div key={index} className="flex flex-col md:flex-row gap-8 items-center md:items-start group">
               <div className="w-full md:w-1/3 text-center md:text-right">
-                <span className="text-5xl font-black text-orange-500/30 group-hover:text-orange-500 transition-colors duration-500">{event.year}</span>
+                <span className="text-5xl font-black text-orange-500/30 group-hover:text-orange-500 transition-colors duration-500">
+                  {event.year}
+                </span>
               </div>
               
               <div className="w-full md:w-2/3 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm group-hover:shadow-2xl group-hover:border-green-200 transition-all duration-500">
@@ -84,11 +107,69 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        <div className="mt-24 text-center">
+        {/* --- 新增：校友回憶時光走廊區塊 --- */}
+        <div className="border-t border-slate-200 pt-20">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+            <div className="text-center md:text-left">
+              <h2 className="text-3xl font-black text-[#004d00]">校友回憶走廊</h2>
+              <p className="text-slate-500 mt-2 italic">那些年，我們在建國南路的日子...</p>
+            </div>
+            <Link 
+              href="/history/upload" 
+              className="bg-orange-500 text-white px-8 py-3 rounded-full font-black hover:bg-orange-600 transition-all shadow-lg transform hover:-translate-y-1"
+            >
+              + 我要投稿老照片
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-20 italic text-slate-400">正在沖洗回憶照片...</div>
+          ) : userPhotos.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 bg-white rounded-3xl border border-dashed">
+              目前尚無校友投稿，期待您的第一張珍貴回憶。
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {userPhotos.map((photo) => (
+                <div key={photo.id} className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all border border-slate-100 flex flex-col">
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img src={photo.url} className="w-full h-full object-cover" alt="Alumni Photo" />
+                  </div>
+                  <div className="p-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="bg-orange-100 text-orange-700 text-xs font-black px-3 py-1 rounded-full">
+                        民國 {photo.year_taken - 1911} 年 / 西元 {photo.year_taken}
+                      </span>
+                    </div>
+                    <p className="text-slate-700 leading-relaxed text-sm mb-6">
+                      {photo.description}
+                    </p>
+                    <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
+                      <span className="text-[10px] text-slate-400 italic">提供者：{photo.profiles?.full_name || '校友'}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">Verified Memory</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-32 text-center">
           <p className="text-[#004d00] font-bold text-xl italic">「品德不可壞，才智不可無，群性不可失」</p>
           <div className="mt-8 h-1 w-24 bg-orange-500 mx-auto rounded-full"></div>
         </div>
       </div>
+
+
+      {/* 在最後一個 </div> 之後， </main> 之前插入 */}
+<Link 
+  href="/history/upload" 
+  className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-5 pr-7 py-4 rounded-full shadow-[0_20px_50px_rgba(249,115,22,0.4)] hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
+>
+  <span className="text-2xl group-hover:rotate-12 transition-transform">📸</span>
+  <span className="font-black tracking-widest text-sm">投稿回憶</span>
+</Link>
     </main>
   );
 }
