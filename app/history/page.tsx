@@ -9,25 +9,22 @@ export default function HistoryPage() {
   const [userPhotos, setUserPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. 你提供的靜態正史資料
+  // 1. 靜態正史資料：僅保留最後一張照片
   const timelineEvents = [
     {
       year: '1946',
       title: '延平學院誕生：荒野暗夜中的螢光',
-      description: '創辦人朱昭陽、宋進英先生秉持「生命的意義，不在當大臣，而在培養大臣」之理念，在林獻堂先生及企業界資助下創立。創校典禮於雙十節夜晚舉行，一千一百多名學生在燭影下聆聽朱先生訓詞：「我們要當荒野暗夜中的螢光」。',
-      image: '/LINE_ALBUM_待選延平桌曆照片_260326_1.jpg'
+      description: '創辦人朱昭陽、宋進英先生秉持「生命的意義，不在當大臣，而在培養大臣」之理念，在林獻堂先生及企業界資助下創立。創校典禮於雙十節夜晚舉行，一千一百多名學生在燭影下聆聽朱先生訓詞：「我們要當荒野暗夜中的螢光」。'
     },
     {
       year: '1947',
       title: '動盪歲月：消失在塵埃中的五個月',
-      description: '二二八事件爆發，延平學院因學生滿腔愛鄉血忱，遭軍隊假借名義命令停辦。五個多月的蓊鬱榮耀化作創痕，延平學院在時空中消失了。朱昭陽先生隨即積極奔走，在風雨中守護台灣人的精神支柱。',
-      image: '/LINE_ALBUM_待選延平桌曆照片_260326_3.jpg'
+      description: '二二八事件爆發，延平學院因學生滿腔愛鄉血忱，遭軍隊假借名義命令停辦。五個多月的蓊鬱榮耀化作創痕，延平學院在時空中消失了。朱昭陽先生隨即積極奔走，在風雨中守護台灣人的精神支柱。'
     },
     {
       year: '1948',
       title: '艱難復校：補習學校名義先行',
-      description: '三十七年九月以「延平高中補習學校」名義先行復校。雖然地位低微，但師資陣容極其堅強，包含許多知名教授如前總統李登輝先生。民國四十二年，終於遷入現今建國南路校址。',
-      image: '/placeholder_lee.jpg'
+      description: '三十七年九月以「延平高中補習學校」名義先行復校。雖然地位低微，但師資陣容極其堅強，包含許多知名教授如前總統李登輝先生。民國四十二年，終於遷入現今建國南路校址。'
     },
     {
       year: '1959 - 至今',
@@ -37,15 +34,13 @@ export default function HistoryPage() {
     }
   ];
 
-  // 2. 動態抓取校友投稿且已核准的照片
   useEffect(() => {
     const fetchPhotos = async () => {
       const { data } = await supabase
         .from('old_photos')
         .select('*, profiles(full_name)')
         .eq('status', 'approved')
-        .order('year_taken', { ascending: true }); // 按年份由舊到新排序
-      
+        .order('year_taken', { ascending: true });
       if (data) setUserPhotos(data);
       setLoading(false);
     };
@@ -60,7 +55,7 @@ export default function HistoryPage() {
       <div className="relative h-[60vh] bg-cover bg-center" style={{ backgroundImage: "url('/LINE_ALBUM_待選延平桌曆照片_260326_2.jpg')" }}>
         <div className="absolute inset-0 bg-[#004d00]/85" />
         <div className="relative max-w-5xl mx-auto px-6 h-full flex flex-col justify-center items-center text-center text-white">
-          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-widest">歷史的足跡</h1>
+          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-widest text-white">歷史的足跡</h1>
           <p className="text-lg md:text-2xl font-medium leading-relaxed max-w-3xl text-green-50">
             「生命的意義，不在當大臣，而在培養大臣。」<br />
             喚起延平人共同的記憶，凝聚共同的情感。
@@ -69,7 +64,6 @@ export default function HistoryPage() {
       </div>
 
       <div className="max-w-5xl mx-auto py-20 px-6">
-        {/* 創校理念區 */}
         <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-green-100 mb-24 text-slate-700 leading-loose">
           <h2 className="text-2xl font-bold text-[#004d00] mb-6 border-l-4 border-orange-500 pl-4">創校理念與精神</h2>
           <p className="mb-6">
@@ -93,7 +87,9 @@ export default function HistoryPage() {
               <div className="w-full md:w-2/3 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm group-hover:shadow-2xl group-hover:border-green-200 transition-all duration-500">
                 <h3 className="text-2xl font-bold text-[#004d00] mb-4">{event.title}</h3>
                 <p className="text-slate-600 mb-6 leading-relaxed">{event.description}</p>
-                {!event.image.includes('placeholder') && (
+                
+                {/* 修正後的圖片渲染邏輯：只有存在路徑時才渲染容器 */}
+                {event.image && (
                   <div className="rounded-2xl overflow-hidden shadow-lg aspect-video">
                     <img 
                       src={event.image} 
@@ -107,12 +103,12 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        {/* --- 新增：校友回憶時光走廊區塊 --- */}
+        {/* 校友回憶區塊 */}
         <div className="border-t border-slate-200 pt-20">
           <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
             <div className="text-center md:text-left">
               <h2 className="text-3xl font-black text-[#004d00]">校友回憶走廊</h2>
-              <p className="text-slate-500 mt-2 italic">那些年，我們在建國南路的日子...</p>
+              <p className="text-slate-500 mt-2 italic text-sm">那些年，我們在建國南路的日子...</p>
             </div>
             <Link 
               href="/history/upload" 
@@ -161,15 +157,13 @@ export default function HistoryPage() {
         </div>
       </div>
 
-
-      {/* 在最後一個 </div> 之後， </main> 之前插入 */}
-<Link 
-  href="/history/upload" 
-  className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-5 pr-7 py-4 rounded-full shadow-[0_20px_50px_rgba(249,115,22,0.4)] hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
->
-  <span className="text-2xl group-hover:rotate-12 transition-transform">📸</span>
-  <span className="font-black tracking-widest text-sm">投稿回憶</span>
-</Link>
+      <Link 
+        href="/history/upload" 
+        className="fixed bottom-8 right-8 z-[1000] flex items-center gap-3 bg-orange-500 text-white pl-5 pr-7 py-4 rounded-full shadow-[0_20px_50px_rgba(249,115,22,0.4)] hover:bg-orange-600 transition-all hover:scale-110 active:scale-95 group"
+      >
+        <span className="text-2xl group-hover:rotate-12 transition-transform">📸</span>
+        <span className="font-black tracking-widest text-sm">投稿回憶</span>
+      </Link>
     </main>
   );
 }

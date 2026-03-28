@@ -7,24 +7,83 @@ import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
+  const [sessionUser, setSessionUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
+
+  // --- 新增：補齊資料狀態 ---
+  const [needsCompletion, setNeedsCompletion] = useState(false);
+  const [editData, setEditData] = useState({ phone: '', address: '', industry: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
   }, []);
 
   const fetchUserProfile = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login');
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      setSessionUser(session.user);
 
-    const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-    if (data) setProfile({ ...data, email: session.user.email });
-    setLoading(false);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        setErrorMsg(error.message);
+      } else if (data) {
+        setProfile({ ...data, email: session.user.email });
+        
+        // 檢查是否缺少必填資料 (電話或地址)
+        if (!data.phone || !data.address) {
+          setNeedsCompletion(true);
+          setEditData({
+            phone: data.phone || '',
+            address: data.address || '',
+            industry: data.industry || ''
+          });
+        } else {
+          setNeedsCompletion(false);
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 新增：儲存補齊的資料 ---
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          phone: editData.phone,
+          address: editData.address,
+          industry: editData.industry
+        })
+        .eq('id', sessionUser.id);
+
+      if (error) throw error;
+      
+      alert('資料已更新完成！');
+      fetchUserProfile(); // 重新抓取，解鎖畫面
+    } catch (err: any) {
+      alert('儲存失敗：' + err.message);
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,26 +92,15 @@ export default function ProfilePage() {
 
     setUploading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
+      if (!sessionUser) return;
       const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}_${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('proofs')
-        .upload(fileName, file);
-
+      const fileName = `${sessionUser.id}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage.from('proofs').upload(fileName, file);
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('proofs')
-        .getPublicUrl(fileName);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ payment_proof_url: publicUrl })
-        .eq('id', session.user.id);
-
+      const { data: { publicUrl } } = supabase.storage.from('proofs').getPublicUrl(fileName);
+      const { error: updateError } = await supabase.from('profiles').update({ payment_proof_url: publicUrl }).eq('id', sessionUser.id);
       if (updateError) throw updateError;
 
       alert('證明已上傳！請等待管理員核對。');
@@ -64,84 +112,126 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center italic">載入中...</div>;
+  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-bold text-slate-400 text-sm">LOADING...</div>;
 
+  if (!profile) return (
+    <main className="min-h-screen bg-slate-50">
+      <Navbar />
+      <div className="max-w-xl mx-auto mt-20 p-10 bg-white shadow-2xl rounded-[2.5rem] text-center border border-slate-200">
+        <span className="text-4xl">⚠️</span>
+        <h2 className="text-xl font-black text-slate-800 mt-4 mb-2">未完成註冊 / 資料抓取失敗</h2>
+        <div className="my-6 p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Debug Info</p>
+          <p className="text-xs text-slate-600 mb-1"><strong>當前登入 ID:</strong> <code className="bg-orange-50 px-1 text-orange-600">{sessionUser?.id}</code></p>
+          <p className="text-xs text-slate-600"><strong>錯誤訊息:</strong> <span className="text-red-500 font-medium">{errorMsg || '查無對應 Profile 紀錄'}</span></p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <button onClick={() => fetchUserProfile()} className="w-full bg-[#003366] text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg">重新整理並重試</button>
+          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="w-full text-slate-400 text-xs font-bold py-2">登出並切換帳號</button>
+        </div>
+      </div>
+    </main>
+  );
+
+  // --- 強制補齊資料畫面 ---
+  if (needsCompletion) return (
+    <main className="min-h-screen bg-slate-50">
+      <Navbar />
+      <div className="max-w-xl mx-auto py-16 px-6">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-100">
+          <div className="text-center mb-8">
+            <span className="text-4xl mb-4 block">📋</span>
+            <h1 className="text-2xl font-black text-[#003366] mb-2">請補齊聯絡資料</h1>
+            <p className="text-slate-500 text-sm">為了確保活動聯絡與會刊寄送，請填寫您的手機與地址即可解鎖校友專區。</p>
+          </div>
+          
+          <form onSubmit={handleSaveProfile} className="space-y-5">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">手機號碼 <span className="text-red-500">*</span></label>
+              <input required type="tel" placeholder="例：0912345678" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
+                value={editData.phone} onChange={(e) => setEditData({...editData, phone: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">收信地址 <span className="text-red-500">*</span></label>
+              <input required type="text" placeholder="請填寫完整地址" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
+                value={editData.address} onChange={(e) => setEditData({...editData, address: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">所屬行業 / 公司 (選填)</label>
+              <input type="text" placeholder="例：科技業 / 台積電" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
+                value={editData.industry} onChange={(e) => setEditData({...editData, industry: e.target.value})} />
+            </div>
+            <button disabled={savingProfile} type="submit" className="w-full mt-4 bg-[#004d00] text-white py-4 rounded-2xl font-black shadow-lg">
+              {savingProfile ? '儲存中...' : '確認送出'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+
+  // --- 原本的數位校友卡畫面 ---
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
       <div className="max-w-3xl mx-auto py-12 px-6">
-        <h1 className="text-3xl font-black text-[#003366] mb-8">我的帳號</h1>
+        <h1 className="text-3xl font-black text-[#003366] mb-8 tracking-tighter">我的帳號中心</h1>
 
-        {/* 1. 審核狀態警告 (僅在未核准時顯示) */}
-        {profile.status !== 'approved' && (
+        {profile?.status !== 'approved' && (
           <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-8 rounded-r-lg shadow-sm">
             <p className="text-orange-700 font-bold">審核中</p>
             <p className="text-orange-600 text-sm mt-1">您的校友身分正在等待總會人工審核，核准後即可解鎖完整功能。</p>
           </div>
         )}
 
-        {/* 2. 數位校友卡設計 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#004d00] to-[#002200] rounded-2xl shadow-2xl p-8 text-white mb-10">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-orange-500 opacity-20 rounded-full blur-2xl"></div>
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#004d00] to-[#002200] rounded-[2.5rem] shadow-2xl p-10 text-white mb-10">
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start mb-12">
               <div>
                 <h2 className="text-2xl font-black tracking-widest text-orange-400">延平中學校友總會</h2>
-                <p className="text-sm text-green-100 mt-1 opacity-80 italic">Yanping Alumni Association</p>
+                <p className="text-[10px] text-green-300 mt-1 opacity-70 tracking-[0.2em] font-bold">DIGITAL ALUMNI CARD</p>
               </div>
-              <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold tracking-wider backdrop-blur-sm uppercase">
-                {profile.identity_type === 'alumni' ? '延平校友' : profile.identity_type}
+              <span className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-[10px] font-black tracking-widest backdrop-blur-md uppercase border border-white/20">
+                {profile?.role === 'admin' ? '系統管理員' : (profile?.identity_type || '會員')}
               </span>
             </div>
 
             <div>
-              <p className="text-[10px] text-green-200 mb-1 uppercase tracking-widest">Name</p>
-              <h3 className="text-3xl font-bold mb-4">{profile.full_name || '未填寫'}</h3>
-              
-              <div className="grid grid-cols-2 gap-4 border-t border-white/20 pt-4 mt-4">
-                <div>
-                  <p className="text-[10px] text-green-200 uppercase">Class</p>
-                  <p className="font-bold text-lg">第 {profile.class_year} 屆</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-green-200 uppercase">Industry</p>
-                  <p className="font-bold text-lg">{profile.industry || '未提供'}</p>
-                </div>
+              <p className="text-[10px] text-green-300 mb-1 uppercase tracking-[0.2em] font-black opacity-60">Full Name</p>
+              <h3 className="text-4xl font-black mb-8 tracking-tight">{profile?.full_name}</h3>
+              <div className="flex gap-12 border-t border-white/10 pt-6">
+                <div><p className="text-[10px] text-green-300 font-bold uppercase mb-1">Class</p><p className="font-black text-xl">第 {profile?.class_year} 屆</p></div>
+                <div><p className="text-[10px] text-green-300 font-bold uppercase mb-1">Phone</p><p className="font-black text-xl">{profile?.phone}</p></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 3. 帳號與會費資訊區 */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
-          <div className="flex justify-between items-center border-b pb-4">
-            <h3 className="font-bold text-slate-800">登入信箱</h3>
-            <span className="text-slate-600 text-sm">{profile.email}</span>
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200 space-y-6">
+          <div className="flex justify-between items-center border-b border-slate-50 pb-6">
+            <h3 className="font-black text-slate-800 text-sm italic">登入信箱</h3>
+            <span className="text-slate-600 text-sm">{profile?.email}</span>
           </div>
 
-          <div className="flex justify-between items-center border-b pb-4">
-            <h3 className="font-bold text-slate-800">年度會費狀態</h3>
-            {profile.is_paid ? (
-              <span className="text-green-600 font-bold flex items-center gap-1 text-sm">
-                <span className="text-lg">●</span> 已完成繳費
-              </span>
-            ) : (
-              <span className="text-red-500 font-bold flex items-center gap-1 text-sm">
-                <span className="text-lg animate-pulse">●</span> 未繳費 / 待確認
-              </span>
-            )}
+          <div className="flex justify-between items-center border-b border-slate-50 pb-6">
+            <h3 className="font-black text-slate-800 text-sm italic">會籍審核狀態</h3>
+            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${profile?.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+              {profile?.status === 'approved' ? 'VERIFIED' : 'PENDING'}
+            </span>
           </div>
 
-          {/* 4. 繳費證明上傳區 (未繳費時才顯示) */}
-          {!profile.is_paid && (
-            <div className="pt-2">
-              <p className="text-sm text-slate-500 mb-4">
-                請轉帳至總會帳戶後，上傳轉帳成功截圖或收據以供管理員核對。
-              </p>
-              
-              {profile.payment_proof_url ? (
+          <div className="flex justify-between items-center border-b border-slate-50 pb-6">
+            <h3 className="font-black text-slate-800 text-sm italic">年度會費確認</h3>
+            <span className={`text-xs font-black ${profile?.is_paid ? "text-green-600" : "text-red-500"}`}>
+              {profile?.is_paid ? '✓ 已完成繳費' : '✕ 待確認 / 未繳費'}
+            </span>
+          </div>
+
+          {!profile?.is_paid && (
+            <div className="pt-4">
+              {profile?.payment_proof_url ? (
                 <div className="bg-slate-50 p-6 rounded-2xl border border-dashed border-slate-300 text-center">
-                  <p className="text-xs text-[#003366] font-bold mb-3 italic">已上傳證明，審核中...</p>
+                  <p className="text-xs text-[#003366] font-bold mb-3 italic">已上傳證明，審核中</p>
                   <img src={profile.payment_proof_url} alt="Proof" className="h-40 mx-auto rounded-lg shadow-md opacity-75 object-cover" />
                   <label className="mt-4 inline-block text-[10px] text-slate-400 cursor-pointer hover:text-[#003366] transition-colors">
                     重選檔案並更換
@@ -149,12 +239,9 @@ export default function ProfilePage() {
                   </label>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors group">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <p className="text-3xl mb-2 group-hover:scale-110 transition-transform">📸</p>
-                    <p className="mb-1 text-sm text-slate-600 font-bold">{uploading ? '正在上傳至雲端...' : '點擊此處上傳繳費截圖'}</p>
-                    <p className="text-[10px] text-slate-400">支援 JPG, PNG 格式 (最大 5MB)</p>
-                  </div>
+                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
+                  <span className="text-3xl mb-2">📸</span>
+                  <p className="text-sm text-slate-600 font-bold">{uploading ? '上傳中...' : '點擊上傳繳費截圖'}</p>
                   <input type="file" className="hidden" accept="image/*" onChange={handleUploadProof} disabled={uploading} />
                 </label>
               )}
@@ -162,12 +249,9 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="mt-10 text-center">
-          <button 
-            onClick={() => supabase.auth.signOut().then(() => router.push('/'))} 
-            className="text-slate-400 text-xs hover:text-red-500 transition-colors font-medium border-b border-transparent hover:border-red-500"
-          >
-            登出延平校友系統
+        <div className="mt-12 text-center">
+          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="text-slate-400 text-[10px] font-black tracking-[0.2em] uppercase hover:text-red-500 transition-colors">
+            Logout Security Session
           </button>
         </div>
       </div>

@@ -4,117 +4,138 @@ import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [classYear, setClassYear] = useState('');
-  const [identityType, setIdentityType] = useState('alumni'); // 預設為校友
-  const [industry, setIndustry] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    classYear: '',
+    industry: '',
+    phone: '',      // 新增：電話
+    address: ''     // 新增：地址
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
-      // 1. 建立 Auth 帳號
+      // 1. 在 Supabase Auth 建立登入帳號
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
+        email: formData.email,
+        password: formData.password,
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error('註冊失敗，請稍後再試。');
+      
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("帳號建立失敗，請稍後再試。");
 
       // 2. 將詳細資料寫入 profiles 表格
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: authData.user.id,
-          full_name: fullName,
-          class_year: parseInt(classYear) || null,
-          identity_type: identityType,
-          industry: industry,
-          status: 'pending', // 預設為待審核
-          is_paid: false,
-        }
-      ]);
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            full_name: formData.fullName,
+            class_year: parseInt(formData.classYear),
+            industry: formData.industry || '未提供',
+            phone: formData.phone,
+            address: formData.address,
+            status: 'pending', // 預設為待審核
+            is_paid: false
+          }
+        ]);
 
-      if (profileError) {
-        console.error('Profile 寫入失敗:', profileError);
-        throw new Error('帳號已建立，但資料寫入失敗，請聯繫管理員。');
-      }
+      if (profileError) throw profileError;
 
-      alert('註冊成功！請等待管理員審核您的校友身分。');
-      router.push('/profile'); // 註冊完直接導向數位校友卡頁面看狀態
-      
-    } catch (err: any) {
-      setError(err.message || '發生未知錯誤');
+      alert("🎉 註冊成功！請等待總會管理員審核您的校友身分。");
+      router.push('/profile'); // 註冊完直接導向個人檔案頁面
+
+    } catch (error: any) {
+      alert("註冊失敗: " + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col">
+    <main className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-black text-[#004d00]">加入校友總會</h2>
-            <p className="text-sm text-slate-500 mt-2">建立您的專屬數位校友卡，串聯延平人脈</p>
+      <div className="max-w-xl mx-auto py-16 px-6">
+        <div className="bg-white shadow-2xl rounded-[2.5rem] p-10 border border-slate-100">
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-black text-[#003366] mb-3">校友註冊系統</h1>
+            <p className="text-slate-500 text-sm">歡迎回到延平！請填寫您的真實資料，以便總會核對您的校友身分與寄送通知。</p>
           </div>
 
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 font-bold">{error}</div>}
-
-          <form onSubmit={handleRegister} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
             {/* 帳號密碼區 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="block text-sm font-bold text-slate-700 mb-1">Email 信箱 (登入帳號)</label>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none transition-all" placeholder="your@email.com" />
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Account Setup</h2>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">登入信箱 (Email)</label>
+                <input required type="email" placeholder="example@email.com" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] focus:ring-1 focus:ring-[#003366] transition-all" 
+                  onChange={(e) => setFormData({...formData, email: e.target.value})} />
               </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-bold text-slate-700 mb-1">密碼 (至少 6 碼)</label>
-                <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none transition-all" placeholder="••••••••" />
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">設定密碼 (至少 6 碼)</label>
+                <input required type="password" minLength={6} placeholder="••••••••" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] focus:ring-1 focus:ring-[#003366] transition-all" 
+                  onChange={(e) => setFormData({...formData, password: e.target.value})} />
               </div>
             </div>
 
-            <hr className="border-slate-200" />
-
-            {/* 個人資料區 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-bold text-slate-700 mb-1">真實姓名</label>
-                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none" placeholder="例如：王小明" />
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-bold text-slate-700 mb-1">畢業屆次</label>
-                <input type="number" required value={classYear} onChange={(e) => setClassYear(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none" placeholder="例如：60" />
-              </div>
+            {/* 校友資料區 */}
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Personal Info</h2>
               
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-bold text-slate-700 mb-1">身分別</label>
-                <select value={identityType} onChange={(e) => setIdentityType(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none bg-white">
-                  <option value="alumni">延平校友</option>
-                  <option value="student">在校生</option>
-                  <option value="teacher">教職員</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">真實姓名</label>
+                  <input required type="text" placeholder="例：王小明" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] transition-all" 
+                    onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">畢業屆次</label>
+                  <input required type="number" placeholder="例：55" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] transition-all" 
+                    onChange={(e) => setFormData({...formData, classYear: e.target.value})} />
+                </div>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-bold text-slate-700 mb-1">目前產業/職業</label>
-                <input type="text" value={industry} onChange={(e) => setIndustry(e.target.value)} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#004d00] outline-none" placeholder="例如：科技業、學生" />
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">手機號碼</label>
+                <input required type="tel" placeholder="例：0912345678" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] transition-all" 
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">聯絡地址 (實體會刊/贈品寄送)</label>
+                <input required type="text" placeholder="請填寫完整收件地址" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] transition-all" 
+                  onChange={(e) => setFormData({...formData, address: e.target.value})} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">目前行業 / 任職公司 (選填)</label>
+                <input type="text" placeholder="例：科技業 / 台積電" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] transition-all" 
+                  onChange={(e) => setFormData({...formData, industry: e.target.value})} />
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-[#004d00] text-white font-bold py-3.5 rounded-xl hover:bg-green-900 transition-colors shadow-lg mt-4 disabled:bg-slate-400">
-              {loading ? '處理中...' : '送出註冊資料'}
+            <button disabled={loading} type="submit" className="w-full bg-[#004d00] text-white py-4 rounded-2xl font-black text-lg hover:bg-[#003300] active:scale-95 transition-all shadow-lg">
+              {loading ? "處理中..." : "確認註冊"}
             </button>
+            
+            <div className="text-center mt-6">
+              <p className="text-sm text-slate-500">已經有帳號了？ <Link href="/login" className="text-[#003366] font-bold hover:underline">點此登入</Link></p>
+            </div>
           </form>
+
         </div>
       </div>
     </main>

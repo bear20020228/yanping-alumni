@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -61,7 +62,7 @@ export default function AdminPage() {
       .order('created_at', { ascending: false });
     if (pPhotos) setPendingPhotos(pPhotos);
 
-    // 4. 抓取已核准老照片 (供誤按救援，取最近15張)
+    // 4. 抓取已核准老照片 (供誤按救援)
     const { data: aPhotos } = await supabase
       .from('old_photos')
       .select('*, profiles:uploader_id(full_name, class_year)')
@@ -70,18 +71,55 @@ export default function AdminPage() {
       .limit(15);
     if (aPhotos) setApprovedPhotos(aPhotos);
 
-    // 5. 抓取活動報名統計 (抓取活動名稱並關聯報名者資訊)
+    // 5. 抓取活動報名統計 (包含 Profiles 新增的 phone 與 address)
     const { data: events } = await supabase
       .from('events')
       .select(`
         *,
         event_registrations (
-          profiles ( full_name, class_year )
+          profiles ( full_name, class_year, industry, phone, address )
         )
       `);
     if (events) setEventsData(events);
 
     setLoading(false);
+  };
+
+  // --- 核心匯出功能 ---
+  const handleExportExcel = (event: any) => {
+    if (!event.event_registrations || event.event_registrations.length === 0) {
+      alert("目前尚無人報名，無法匯出。");
+      return;
+    }
+
+    const excelData = event.event_registrations.map((reg: any, index: number) => ({
+      '序號': index + 1,
+      '活動名稱': event.title,
+      '姓名': reg.profiles?.full_name || '未填寫',
+      '屆次': reg.profiles?.class_year ? `${reg.profiles.class_year}屆` : '未知',
+      '產業/公司': reg.profiles?.industry || '未提供',
+      '電話': reg.profiles?.phone || '未提供',
+      '收信地址': reg.profiles?.address || '未提供',
+      '報名時間': new Date(reg.created_at || '').toLocaleString()
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "報名名單");
+    
+    // 設定欄寬美化
+    ws['!cols'] = [
+      { wch: 6 },  // 序號
+      { wch: 25 }, // 活動名稱
+      { wch: 15 }, // 姓名
+      { wch: 10 }, // 屆次
+      { wch: 20 }, // 產業/公司
+      { wch: 15 }, // 電話
+      { wch: 35 }, // 收信地址
+      { wch: 20 }  // 報名時間
+    ];
+
+    XLSX.writeFile(wb, `延平校友會_${event.title}_報名表.xlsx`);
   };
 
   // --- 操作函數 ---
@@ -96,22 +134,15 @@ export default function AdminPage() {
   };
 
   const handleApprovePhoto = async (id: number) => {
-  try {
-    const { error } = await supabase
-      .from('old_photos')
-      .update({ status: 'approved' })
-      .eq('id', id);
-
-    if (error) throw error;
-    
-    // 成功後立即刷新列表
-    alert('審核通過！');
-    fetchAdminData(); 
-  } catch (err: any) {
-    console.error('Approve failed:', err);
-    alert('核准失敗：' + (err.message || '權限不足'));
-  }
-};
+    try {
+      const { error } = await supabase.from('old_photos').update({ status: 'approved' }).eq('id', id);
+      if (error) throw error;
+      alert('審核通過！');
+      fetchAdminData(); 
+    } catch (err: any) {
+      alert('核准失敗：' + err.message);
+    }
+  };
 
   const handleApproveBiz = async (id: number) => {
     await supabase.from('alumni_businesses').update({ status: 'approved' }).eq('id', id);
@@ -130,9 +161,9 @@ export default function AdminPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center italic">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003366] mb-4"></div>
-      <p className="font-bold text-slate-400">正在進入總會管理後台...</p>
+      <p className="font-bold text-slate-400">正在進入管理後台...</p>
     </div>
   );
 
@@ -140,9 +171,7 @@ export default function AdminPage() {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-center">
         <div className="max-w-md w-full bg-white shadow-2xl rounded-3xl p-10 border border-red-100">
-          <span className="text-5xl">🚫</span>
-          <h2 className="text-2xl font-black text-red-600 mt-4 mb-2">存取被拒</h2>
-          <p className="text-slate-500 mb-6">您不具備管理員權限。</p>
+          <h2 className="text-2xl font-black text-red-600 mb-6">🚫 權限不足</h2>
           <Link href="/profile" className="inline-block bg-[#003366] text-white px-8 py-3 rounded-xl font-bold">返回校友卡</Link>
         </div>
       </main>
@@ -154,47 +183,45 @@ export default function AdminPage() {
       <Navbar />
       <div className="max-w-[1800px] mx-auto py-10 px-6">
         
-        {/* Header */}
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-black text-[#003366] border-l-8 border-[#003366] pl-4 tracking-tighter uppercase">Admin Dashboard</h1>
-            <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-black tracking-widest uppercase">V1.0 System</span>
+            <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-black tracking-widest">FULL ACCESS</span>
           </div>
-          <button onClick={fetchAdminData} className="bg-white border-2 border-slate-200 px-6 py-2 rounded-xl text-sm font-black hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95">整理即時數據</button>
+          <button onClick={fetchAdminData} className="bg-white border-2 border-slate-200 px-6 py-2 rounded-xl text-sm font-black hover:border-slate-400 transition-all">整理即時數據</button>
         </div>
 
-        {/* 主要網格排版 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 左側：核心審核 (佔 8 欄) */}
+          {/* 左側：活動與審核 (8欄) */}
           <div className="lg:col-span-8 space-y-8">
             
-            {/* 1. 活動報名統計 */}
+            {/* 1. 活動報名名單 (含 Excel 匯出) */}
             <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-slate-800">📋 活動報名名單</h2>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Status</span>
-              </div>
+              <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-2">📋 活動報名名單</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {eventsData.map(event => (
-                  <div key={event.id} className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col">
+                  <div key={event.id} className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-6">
                       <h3 className="text-lg font-black text-[#003366]">{event.title}</h3>
                       <div className="bg-[#003366] text-white text-xs px-3 py-1 rounded-full font-bold">
-                        {event.event_registrations?.length || 0} 人已報名
+                        {event.event_registrations?.length || 0} 人報名
                       </div>
                     </div>
-                    <div className="flex-1 max-h-48 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-300">
+                    <div className="flex-1 max-h-48 overflow-y-auto space-y-2 mb-6 pr-2 scrollbar-thin scrollbar-thumb-slate-300">
                       {event.event_registrations?.map((reg: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm">
-                          <span className="font-bold text-slate-700 text-sm">{reg.profiles?.full_name}</span>
+                        <div key={i} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm text-sm">
+                          <span className="font-bold text-slate-700">{reg.profiles?.full_name}</span>
                           <span className="text-xs text-slate-400">第 {reg.profiles?.class_year} 屆</span>
                         </div>
                       ))}
-                      {event.event_registrations?.length === 0 && (
-                        <p className="text-center py-4 text-xs text-slate-400 italic">目前尚未有報名資料</p>
-                      )}
                     </div>
+                    <button 
+                      onClick={() => handleExportExcel(event)}
+                      className="w-full bg-green-600 text-white py-3 rounded-xl text-xs font-black hover:bg-green-700 transition-all shadow-lg shadow-green-900/10"
+                    >
+                      📥 匯出 Excel 名單
+                    </button>
                   </div>
                 ))}
               </div>
@@ -202,42 +229,30 @@ export default function AdminPage() {
 
             {/* 2. 老照片待審區 */}
             <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-orange-600 uppercase tracking-tighter">待審老照片 ({pendingPhotos.length})</h2>
-              </div>
+              <h2 className="text-xl font-black text-orange-600 mb-8">待審老照片 ({pendingPhotos.length})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {pendingPhotos.map(ph => (
                   <div key={ph.id} className="border-2 border-slate-100 rounded-3xl p-5 bg-slate-50/50 space-y-4">
-                    <div className="aspect-video overflow-hidden rounded-2xl relative">
-                      <img src={ph.url} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewUrl(ph.url)} />
-                      <div className="absolute top-3 left-3 bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">
-                        民國 {ph.year_taken - 1911} 年
-                      </div>
+                    <img src={ph.url} className="w-full aspect-video object-cover rounded-2xl cursor-pointer" onClick={() => setPreviewUrl(ph.url)} />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold">
+                      <span>{ph.profiles?.full_name} ({ph.profiles?.class_year}屆)</span>
+                      <span>{ph.year_taken}年</span>
                     </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] text-slate-400 mb-2 font-bold uppercase tracking-widest">
-                        <span>由 {ph.profiles?.full_name} 提供</span>
-                        <span>{ph.profiles?.class_year} 屆</span>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed bg-white p-4 rounded-2xl border border-slate-100 min-h-[60px]">
-                        {ph.description}
-                      </p>
-                    </div>
+                    <p className="text-xs text-slate-600 line-clamp-2">{ph.description}</p>
                     <div className="flex gap-2">
-                      <button onClick={() => handleApprovePhoto(ph.id)} className="flex-[2] bg-orange-500 text-white py-3 rounded-xl text-xs font-black hover:bg-orange-600 shadow-md active:scale-95 transition-all">核准發布</button>
-                      <button onClick={() => handleDeletePhoto(ph.id, ph.storage_path)} className="flex-1 bg-white border-2 border-red-100 text-red-500 py-3 rounded-xl text-xs font-bold hover:bg-red-50 transition-all">拒絕</button>
+                      <button onClick={() => handleApprovePhoto(ph.id)} className="flex-[2] bg-orange-500 text-white py-3 rounded-xl text-xs font-black hover:bg-orange-600">核准發布</button>
+                      <button onClick={() => handleDeletePhoto(ph.id, ph.storage_path)} className="flex-1 bg-white border-2 border-red-100 text-red-500 py-3 rounded-xl text-xs font-bold hover:bg-red-50">拒絕</button>
                     </div>
                   </div>
                 ))}
-                {pendingPhotos.length === 0 && <p className="text-center py-10 text-slate-400 italic col-span-2 bg-slate-50 rounded-2xl border-2 border-dashed">暫無待審照片</p>}
               </div>
             </section>
           </div>
 
-          {/* 右側：管理與名單 (佔 4 欄) */}
+          {/* 右側：側邊管理 (4欄) */}
           <div className="lg:col-span-4 space-y-8">
             
-            {/* 3. 會籍與繳費審核 */}
+            {/* 會籍審核 */}
             <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
               <h2 className="text-lg font-black text-slate-800 mb-6 border-b pb-4 flex justify-between items-center">
                 會員核定
@@ -245,14 +260,14 @@ export default function AdminPage() {
               </h2>
               <div className="space-y-4">
                 {pendingUsers.map(u => (
-                  <div key={u.id} className="p-5 border rounded-2xl bg-slate-50 space-y-4 shadow-sm">
+                  <div key={u.id} className="p-5 border rounded-2xl bg-slate-50 space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-black text-slate-900">{u.full_name || '未填'}</p>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">{u.class_year}屆 | {u.identity_type}</p>
                       </div>
                       {u.payment_proof_url && (
-                        <button onClick={() => setPreviewUrl(u.payment_proof_url)} className="text-[9px] bg-blue-100 text-blue-600 px-2.5 py-1.5 rounded-lg font-black uppercase tracking-widest hover:bg-blue-200">Proof</button>
+                        <button onClick={() => setPreviewUrl(u.payment_proof_url)} className="text-[9px] bg-blue-100 text-blue-600 px-2 py-1 rounded font-black">證明</button>
                       )}
                     </div>
                     <div className="flex gap-2">
@@ -264,32 +279,23 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* 4. 已核准照片管理 (誤按救回) */}
+            {/* 已核准照片管理 */}
             <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-              <h2 className="text-lg font-black text-green-700 mb-6 italic border-b pb-4 flex justify-between items-center">
-                已發布 (管理)
-                <span className="text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded-full">Recent</span>
-              </h2>
+              <h2 className="text-lg font-black text-green-700 mb-6 border-b pb-4">已發布 (管理)</h2>
               <div className="space-y-4">
                 {approvedPhotos.map(ph => (
-                  <div key={ph.id} className="flex gap-4 p-4 border rounded-2xl bg-white hover:bg-slate-50 transition-colors group relative">
+                  <div key={ph.id} className="flex gap-4 p-4 border rounded-2xl bg-white hover:bg-slate-50 transition-colors">
                     <img src={ph.url} className="w-14 h-14 object-cover rounded-xl shadow-sm" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-black text-slate-800 truncate uppercase tracking-widest">{ph.profiles?.full_name}</p>
-                      <p className="text-[9px] text-slate-400 mt-1 line-clamp-1">{ph.description}</p>
-                      <button 
-                        onClick={() => handleDeletePhoto(ph.id, ph.storage_path)}
-                        className="mt-2 text-[9px] text-red-500 font-black hover:underline underline-offset-4"
-                      >
-                        ⚠️ 強制下架並刪除
-                      </button>
+                      <button onClick={() => handleDeletePhoto(ph.id, ph.storage_path)} className="mt-2 text-[9px] text-red-500 font-black hover:underline">⚠️ 強制下架</button>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* 5. 待審企業地圖 */}
+            {/* 企業地圖 */}
             <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
               <h2 className="text-lg font-black text-blue-800 mb-6 border-b pb-4">地圖上架 ({pendingBusinesses.length})</h2>
               <div className="space-y-4">
