@@ -4,16 +4,17 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // 新增 Link 供按鈕跳轉使用
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [sessionUser, setSessionUser] = useState<any>(null);
+  const [myBusinesses, setMyBusinesses] = useState<any[]>([]); // 新增：存放使用者的企業資料
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
-  // --- 新增：補齊資料狀態 ---
   const [needsCompletion, setNeedsCompletion] = useState(false);
   const [editData, setEditData] = useState({ phone: '', address: '', industry: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -31,6 +32,7 @@ export default function ProfilePage() {
       }
       setSessionUser(session.user);
 
+      // 1. 抓取個人資料
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -42,7 +44,6 @@ export default function ProfilePage() {
       } else if (data) {
         setProfile({ ...data, email: session.user.email });
         
-        // 檢查是否缺少必填資料 (電話或地址)
         if (!data.phone || !data.address) {
           setNeedsCompletion(true);
           setEditData({
@@ -54,6 +55,15 @@ export default function ProfilePage() {
           setNeedsCompletion(false);
         }
       }
+
+      // 2. 抓取屬於該使用者的企業資料
+      const { data: bizData } = await supabase
+        .from('alumni_businesses')
+        .select('*')
+        .eq('user_id', session.user.id);
+      
+      if (bizData) setMyBusinesses(bizData);
+
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -61,7 +71,6 @@ export default function ProfilePage() {
     }
   };
 
-  // --- 新增：儲存補齊的資料 ---
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -78,7 +87,7 @@ export default function ProfilePage() {
       if (error) throw error;
       
       alert('資料已更新完成！');
-      fetchUserProfile(); // 重新抓取，解鎖畫面
+      fetchUserProfile(); 
     } catch (err: any) {
       alert('儲存失敗：' + err.message);
     } finally {
@@ -133,7 +142,6 @@ export default function ProfilePage() {
     </main>
   );
 
-  // --- 強制補齊資料畫面 ---
   if (needsCompletion) return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
@@ -170,7 +178,6 @@ export default function ProfilePage() {
     </main>
   );
 
-  // --- 原本的數位校友卡畫面 ---
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
@@ -184,6 +191,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* 數位校友卡 (維持原樣) */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#004d00] to-[#002200] rounded-[2.5rem] shadow-2xl p-10 text-white mb-10">
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start mb-12">
@@ -207,19 +215,18 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200 space-y-6">
+        {/* 帳號狀態與繳費區塊 (維持原樣) */}
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200 space-y-6 mb-10">
           <div className="flex justify-between items-center border-b border-slate-50 pb-6">
             <h3 className="font-black text-slate-800 text-sm italic">登入信箱</h3>
             <span className="text-slate-600 text-sm">{profile?.email}</span>
           </div>
-
           <div className="flex justify-between items-center border-b border-slate-50 pb-6">
             <h3 className="font-black text-slate-800 text-sm italic">會籍審核狀態</h3>
             <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${profile?.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
               {profile?.status === 'approved' ? 'VERIFIED' : 'PENDING'}
             </span>
           </div>
-
           <div className="flex justify-between items-center border-b border-slate-50 pb-6">
             <h3 className="font-black text-slate-800 text-sm italic">年度會費確認</h3>
             <span className={`text-xs font-black ${profile?.is_paid ? "text-green-600" : "text-red-500"}`}>
@@ -245,6 +252,48 @@ export default function ProfilePage() {
                   <input type="file" className="hidden" accept="image/*" onChange={handleUploadProof} disabled={uploading} />
                 </label>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* --- 新增：我的企業管理區塊 --- */}
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200">
+          <h2 className="text-xl font-black text-[#003366] mb-6 border-l-4 border-orange-500 pl-4">我的企業管理</h2>
+          
+          {myBusinesses.length === 0 ? (
+            <div className="bg-slate-50 rounded-2xl p-8 text-center border border-dashed border-slate-300">
+              <span className="text-4xl block mb-3">🏢</span>
+              <p className="text-slate-500 text-sm font-bold mb-4">您尚未登錄任何企業資訊</p>
+              <Link href="/add-business" className="inline-block bg-orange-500 text-white px-6 py-2.5 rounded-full font-black text-sm hover:bg-orange-600 transition-all shadow-md active:scale-95">
+                立即加入企業地圖
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {myBusinesses.map((biz) => (
+                <div key={biz.id} className="flex flex-col md:flex-row justify-between md:items-center bg-slate-50 p-5 rounded-2xl border border-slate-100 group hover:border-orange-200 transition-colors gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-black text-lg text-slate-800">{biz.name}</h3>
+                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-black ${biz.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {biz.status === 'approved' ? '已核准上架' : '審核中'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">📍 {biz.address} | 🏷️ {biz.category}</p>
+                  </div>
+                  
+                  {/* 指向編輯頁面 */}
+                  <Link href={`/edit-business/${biz.id}`} className="text-center bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-sm font-black hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all shadow-sm">
+                    修改資料
+                  </Link>
+                </div>
+              ))}
+              
+              <div className="pt-4 border-t border-slate-100 text-right">
+                <Link href="/add-business" className="text-sm font-black text-orange-500 hover:text-orange-600 transition-colors">
+                  + 新增其他企業
+                </Link>
+              </div>
             </div>
           )}
         </div>

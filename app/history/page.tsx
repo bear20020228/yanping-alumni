@@ -90,7 +90,7 @@ export default function HistoryPage() {
         <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-green-100 mb-24 text-slate-700 leading-loose">
           <h2 className="text-2xl font-black text-[#004d00] mb-6 border-l-8 border-orange-500 pl-4 uppercase tracking-tighter">創校理念與精神</h2>
           <p className="mb-6 font-medium">
-            創立於民國三十五年，創校董事包含 **林獻堂、蔡培火、楊肇嘉、杜聰明、吳三連、丘念台、游彌堅** 等熱心教育人士，共同為台灣人創辦了第一所大學。
+            創立於民國三十五年，創校董事包含 林獻堂、蔡培火、楊肇嘉、杜聰明、吳三連、丘念台、游彌堅 等熱心教育人士，共同為台灣人創辦了第一所大學。
           </p>
           <blockquote className="bg-green-50 p-8 rounded-[2rem] italic text-[#004d00] font-bold my-8 text-center text-xl shadow-inner">
             「給這混亂、昏昧的社會提供一線光明，我們要當荒野暗夜中的螢光。」 —— 朱昭陽
