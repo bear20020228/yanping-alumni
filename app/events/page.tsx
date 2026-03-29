@@ -10,7 +10,7 @@ export default function EventsPage() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [registrations, setRegistrations] = useState<number[]>([]); 
   const [loading, setLoading] = useState(true);
-  const router = useRouter(); // 引入 router
+  const router = useRouter(); 
 
   useEffect(() => {
     fetchData();
@@ -42,7 +42,6 @@ export default function EventsPage() {
     setLoading(false);
   };
 
-  // --- 新增：老照片募集卡片的專屬攔截器 ---
   const handleUploadClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     const { data: { session } } = await supabase.auth.getSession();
@@ -55,9 +54,7 @@ export default function EventsPage() {
     }
   };
 
-  // --- 更新：活動報名攔截邏輯 ---
   const handleRegister = async (eventId: number) => {
-    // 1. 檢查是否登入
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       alert("請先登入校友帳號才能報名活動喔！");
@@ -65,14 +62,12 @@ export default function EventsPage() {
       return;
     }
 
-    // 2. 嚴格權限檢查：身分需核准且已繳費
     if (userProfile?.status !== 'approved' || !userProfile?.is_paid) {
       alert("您的帳號尚在審核中或尚未繳費，系統將為您導向至帳號中心查看狀態！");
-      router.push('/profile'); // 直接引導他去查看狀態或上傳憑證
+      router.push('/profile'); 
       return;
     }
 
-    // 3. 執行報名
     try {
       const { error } = await supabase
         .from('event_registrations')
@@ -81,7 +76,7 @@ export default function EventsPage() {
       if (error) throw error;
       
       alert("🎉 報名成功！期待您的參與！");
-      fetchData(); // 重新整理畫面，把按鈕變成「已報名」
+      fetchData(); 
     } catch (error: any) {
       alert("報名失敗：" + error.message);
     }
@@ -91,9 +86,26 @@ export default function EventsPage() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
       <div className="max-w-6xl mx-auto py-16 px-6">
+        
+        {/* 標題與登入身分提示區塊 */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-black text-[#003366] mb-4 tracking-tighter">校友活動中心</h1>
-          <p className="text-slate-500 text-sm font-bold tracking-widest uppercase">掌握總會最新動態，與學長姐一起回憶青春、拓展人脈</p>
+          <p className="text-slate-500 text-sm font-bold tracking-widest uppercase mb-6">掌握總會最新動態，與學長姐一起回憶青春、拓展人脈</p>
+          
+          {/* --- 新增：報名身分確認卡片 --- */}
+          {userProfile && (
+            <div className="inline-flex items-center justify-center bg-white px-6 py-3 rounded-full border border-slate-200 shadow-sm gap-3 animate-fade-in-up">
+              <span className="text-slate-400 text-xs font-black uppercase tracking-widest">目前報名身分：</span>
+              <span className="px-3 py-1 bg-green-50 text-green-700 text-sm font-black rounded-full border border-green-100">
+                {userProfile.identity_type || '會員'}
+              </span>
+              {userProfile.identity_type === '畢業校友' && userProfile.class_year && (
+                <span className="px-3 py-1 bg-orange-50 text-orange-600 text-sm font-black rounded-full border border-orange-100">
+                  第 {userProfile.class_year} 屆
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -103,7 +115,6 @@ export default function EventsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             
-            {/* --- 固定位：老照片募集常駐卡片 --- */}
             <div className="bg-[#004d00] rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col transform hover:-translate-y-2 transition-all border-4 border-orange-400 relative">
               <div className="h-48 bg-[url('/LINE_ALBUM_待選延平桌曆照片_260326_1.jpg')] bg-cover bg-center opacity-70" />
               <div className="p-8 flex flex-col flex-1">
@@ -124,7 +135,6 @@ export default function EventsPage() {
               </div>
             </div>
 
-            {/* --- 動態資料：活動列表 --- */}
             {events.length === 0 ? null : (
               events.map(event => (
                 <div key={event.id} className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-2xl transition-all group">
@@ -146,7 +156,6 @@ export default function EventsPage() {
                     </div>
                     <p className="text-slate-600 text-sm mb-8 leading-relaxed flex-1 line-clamp-3">{event.description}</p>
                     
-                    {/* 報名按鈕邏輯 */}
                     {registrations.includes(event.id) ? (
                       <button disabled className="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black cursor-not-allowed flex items-center justify-center gap-2 border border-slate-100">
                         <span className="text-green-500 text-lg">✓</span> 您已成功報名

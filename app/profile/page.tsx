@@ -4,19 +4,29 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // 新增 Link 供按鈕跳轉使用
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [sessionUser, setSessionUser] = useState<any>(null);
-  const [myBusinesses, setMyBusinesses] = useState<any[]>([]); // 新增：存放使用者的企業資料
+  const [myBusinesses, setMyBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
+  // 控制編輯模式
+  const [isEditing, setIsEditing] = useState(false);
   const [needsCompletion, setNeedsCompletion] = useState(false);
-  const [editData, setEditData] = useState({ phone: '', address: '', industry: '' });
+  
+  // 表單狀態
+  const [editData, setEditData] = useState({ 
+    phone: '', 
+    address: '', 
+    industry: '',
+    identity_type: '',
+    class_year: '' 
+  });
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -44,19 +54,24 @@ export default function ProfilePage() {
       } else if (data) {
         setProfile({ ...data, email: session.user.email });
         
+        const initialEditData = {
+          phone: data.phone || '',
+          address: data.address || '',
+          industry: data.industry || '',
+          identity_type: data.identity_type || '',
+          class_year: data.class_year?.toString() || ''
+        };
+
         if (!data.phone || !data.address) {
           setNeedsCompletion(true);
-          setEditData({
-            phone: data.phone || '',
-            address: data.address || '',
-            industry: data.industry || ''
-          });
+          setEditData(initialEditData);
         } else {
           setNeedsCompletion(false);
+          setEditData(initialEditData);
         }
       }
 
-      // 2. 抓取屬於該使用者的企業資料
+      // 2. 抓取企業資料
       const { data: bizData } = await supabase
         .from('alumni_businesses')
         .select('*')
@@ -75,18 +90,30 @@ export default function ProfilePage() {
     e.preventDefault();
     setSavingProfile(true);
     try {
+      // 判斷是否更改了身分，如果是，則需要重新審核
+      const isIdentityChanged = profile.identity_type !== editData.identity_type;
+      
+      const updatePayload: any = {
+        phone: editData.phone,
+        address: editData.address,
+        industry: editData.industry,
+        identity_type: editData.identity_type,
+        class_year: editData.identity_type === '畢業校友' && editData.class_year ? parseInt(editData.class_year) : null,
+      };
+
+      if (isIdentityChanged) {
+        updatePayload.status = 'pending'; // 強制重新審核
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          phone: editData.phone,
-          address: editData.address,
-          industry: editData.industry
-        })
+        .update(updatePayload)
         .eq('id', sessionUser.id);
 
       if (error) throw error;
       
-      alert('資料已更新完成！');
+      alert(isIdentityChanged ? '身分資料已更新！將重新進入總會審核流程。' : '資料已更新完成！');
+      setIsEditing(false);
       fetchUserProfile(); 
     } catch (err: any) {
       alert('儲存失敗：' + err.message);
@@ -96,6 +123,7 @@ export default function ProfilePage() {
   };
 
   const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ... 原本的上傳邏輯保持不變 ...
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -128,20 +156,65 @@ export default function ProfilePage() {
       <Navbar />
       <div className="max-w-xl mx-auto mt-20 p-10 bg-white shadow-2xl rounded-[2.5rem] text-center border border-slate-200">
         <span className="text-4xl">⚠️</span>
-        <h2 className="text-xl font-black text-slate-800 mt-4 mb-2">未完成註冊 / 資料抓取失敗</h2>
-        <div className="my-6 p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Debug Info</p>
-          <p className="text-xs text-slate-600 mb-1"><strong>當前登入 ID:</strong> <code className="bg-orange-50 px-1 text-orange-600">{sessionUser?.id}</code></p>
-          <p className="text-xs text-slate-600"><strong>錯誤訊息:</strong> <span className="text-red-500 font-medium">{errorMsg || '查無對應 Profile 紀錄'}</span></p>
-        </div>
-        <div className="flex flex-col gap-3">
-          <button onClick={() => fetchUserProfile()} className="w-full bg-[#003366] text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg">重新整理並重試</button>
-          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="w-full text-slate-400 text-xs font-bold py-2">登出並切換帳號</button>
-        </div>
+        <h2 className="text-xl font-black text-slate-800 mt-4 mb-2">資料抓取失敗</h2>
+        <button onClick={() => fetchUserProfile()} className="w-full mt-4 bg-[#003366] text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg">重新整理</button>
       </div>
     </main>
   );
 
+  // --- 共用的表單內容 (給強制補齊和主動編輯使用) ---
+  const ProfileForm = () => (
+    <form onSubmit={handleSaveProfile} className="space-y-5">
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">身分別 <span className="text-red-500">*</span></label>
+        <select required className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900"
+          value={editData.identity_type} 
+          onChange={(e) => setEditData({...editData, identity_type: e.target.value})}>
+          <option value="" disabled>請選擇您的身分...</option>
+          <option value="畢業校友">畢業校友</option>
+          <option value="在校生">在校生</option>
+          <option value="校內員工">校內員工</option>
+        </select>
+      </div>
+
+      {editData.identity_type === '畢業校友' && (
+        <div className="animate-fade-in-up">
+          <label className="block text-sm font-bold text-slate-700 mb-2">畢業屆次 <span className="text-red-500">*</span></label>
+          <input required type="number" placeholder="例：55" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+            value={editData.class_year} onChange={(e) => setEditData({...editData, class_year: e.target.value})} />
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">手機號碼 <span className="text-red-500">*</span></label>
+        <input required type="tel" placeholder="例：0912345678" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+          value={editData.phone} onChange={(e) => setEditData({...editData, phone: e.target.value})} />
+      </div>
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">收信地址 <span className="text-red-500">*</span></label>
+        <input required type="text" placeholder="請填寫完整地址" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+          value={editData.address} onChange={(e) => setEditData({...editData, address: e.target.value})} />
+      </div>
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">所屬行業 / 公司 (選填)</label>
+        <input type="text" placeholder="例：科技業 / 台積電" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+          value={editData.industry} onChange={(e) => setEditData({...editData, industry: e.target.value})} />
+      </div>
+      
+      <div className="flex gap-4 mt-6">
+        {!needsCompletion && (
+          <button type="button" onClick={() => setIsEditing(false)} className="w-1/3 bg-slate-100 text-slate-500 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all">
+            取消
+          </button>
+        )}
+        <button disabled={savingProfile} type="submit" className={`${needsCompletion ? 'w-full' : 'w-2/3'} bg-[#004d00] text-white py-4 rounded-2xl font-black shadow-lg hover:bg-[#003300] active:scale-95 transition-all`}>
+          {savingProfile ? '儲存中...' : '確認送出'}
+        </button>
+      </div>
+    </form>
+  );
+
+  // --- 強制補齊資料畫面 ---
   if (needsCompletion) return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
@@ -150,39 +223,45 @@ export default function ProfilePage() {
           <div className="text-center mb-8">
             <span className="text-4xl mb-4 block">📋</span>
             <h1 className="text-2xl font-black text-[#003366] mb-2">請補齊聯絡資料</h1>
-            <p className="text-slate-500 text-sm">為了確保活動聯絡與會刊寄送，請填寫您的手機與地址即可解鎖校友專區。</p>
+            <p className="text-slate-500 text-sm">為了確保活動聯絡與會刊寄送，請填寫您的基本資料即可解鎖校友專區。</p>
           </div>
-          
-          <form onSubmit={handleSaveProfile} className="space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">手機號碼 <span className="text-red-500">*</span></label>
-              <input required type="tel" placeholder="例：0912345678" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
-                value={editData.phone} onChange={(e) => setEditData({...editData, phone: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">收信地址 <span className="text-red-500">*</span></label>
-              <input required type="text" placeholder="請填寫完整地址" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
-                value={editData.address} onChange={(e) => setEditData({...editData, address: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">所屬行業 / 公司 (選填)</label>
-              <input type="text" placeholder="例：科技業 / 台積電" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366]" 
-                value={editData.industry} onChange={(e) => setEditData({...editData, industry: e.target.value})} />
-            </div>
-            <button disabled={savingProfile} type="submit" className="w-full mt-4 bg-[#004d00] text-white py-4 rounded-2xl font-black shadow-lg">
-              {savingProfile ? '儲存中...' : '確認送出'}
-            </button>
-          </form>
+          <ProfileForm />
         </div>
       </div>
     </main>
   );
 
+  // --- 主動編輯資料畫面 ---
+  if (isEditing) return (
+    <main className="min-h-screen bg-slate-50">
+      <Navbar />
+      <div className="max-w-xl mx-auto py-16 px-6">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-100">
+          <div className="mb-8">
+            <h1 className="text-2xl font-black text-[#003366] mb-2">修改個人資料</h1>
+            {profile.identity_type !== editData.identity_type && (
+              <div className="bg-orange-50 border-l-4 border-orange-500 p-3 mt-4 text-xs text-orange-700 font-bold">
+                ⚠️ 注意：更動身分別將會重新觸發人工審核流程。
+              </div>
+            )}
+          </div>
+          <ProfileForm />
+        </div>
+      </div>
+    </main>
+  );
+
+  // --- 原本的數位校友卡主畫面 ---
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
       <div className="max-w-3xl mx-auto py-12 px-6">
-        <h1 className="text-3xl font-black text-[#003366] mb-8 tracking-tighter">我的帳號中心</h1>
+        <div className="flex justify-between items-end mb-8">
+          <h1 className="text-3xl font-black text-[#003366] tracking-tighter">我的帳號中心</h1>
+          <button onClick={() => setIsEditing(true)} className="text-sm font-black text-orange-500 hover:text-orange-600 bg-orange-50 px-4 py-2 rounded-xl transition-colors">
+            ✏️ 編輯個人資料
+          </button>
+        </div>
 
         {profile?.status !== 'approved' && (
           <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-8 rounded-r-lg shadow-sm">
@@ -191,7 +270,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* 數位校友卡 (維持原樣) */}
+        {/* 數位校友卡 */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#004d00] to-[#002200] rounded-[2.5rem] shadow-2xl p-10 text-white mb-10">
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex justify-between items-start mb-12">
@@ -208,14 +287,16 @@ export default function ProfilePage() {
               <p className="text-[10px] text-green-300 mb-1 uppercase tracking-[0.2em] font-black opacity-60">Full Name</p>
               <h3 className="text-4xl font-black mb-8 tracking-tight">{profile?.full_name}</h3>
               <div className="flex gap-12 border-t border-white/10 pt-6">
-                <div><p className="text-[10px] text-green-300 font-bold uppercase mb-1">Class</p><p className="font-black text-xl">第 {profile?.class_year} 屆</p></div>
+                {profile?.class_year && (
+                  <div><p className="text-[10px] text-green-300 font-bold uppercase mb-1">Class</p><p className="font-black text-xl">第 {profile?.class_year} 屆</p></div>
+                )}
                 <div><p className="text-[10px] text-green-300 font-bold uppercase mb-1">Phone</p><p className="font-black text-xl">{profile?.phone}</p></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 帳號狀態與繳費區塊 (維持原樣) */}
+        {/* 帳號狀態與繳費區塊 */}
         <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200 space-y-6 mb-10">
           <div className="flex justify-between items-center border-b border-slate-50 pb-6">
             <h3 className="font-black text-slate-800 text-sm italic">登入信箱</h3>
@@ -256,7 +337,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* --- 新增：我的企業管理區塊 --- */}
+        {/* 我的企業管理區塊 */}
         <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-200">
           <h2 className="text-xl font-black text-[#003366] mb-6 border-l-4 border-orange-500 pl-4">我的企業管理</h2>
           
@@ -282,7 +363,6 @@ export default function ProfilePage() {
                     <p className="text-xs text-slate-500 font-medium">📍 {biz.address} | 🏷️ {biz.category}</p>
                   </div>
                   
-                  {/* 指向編輯頁面 */}
                   <Link href={`/edit-business/${biz.id}`} className="text-center bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-sm font-black hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all shadow-sm">
                     修改資料
                   </Link>
