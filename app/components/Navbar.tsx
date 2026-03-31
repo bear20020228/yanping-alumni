@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname(); // 抓取當前路徑
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -38,12 +39,10 @@ export default function Navbar() {
     window.location.href = '/'; 
   };
 
-  // --- 新增：加入企業地圖按鈕的即時攔截器 ---
   const handleMapJoinClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsMenuOpen(false); // 關閉手機版選單
+    setIsMenuOpen(false); 
     
-    // 即時檢查當前 Session
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
@@ -72,11 +71,12 @@ export default function Navbar() {
           </Link>
           
           <div className="hidden md:flex items-center space-x-6 text-sm font-bold">
-            <Link href="/" className="hover:text-green-200 transition-colors">首頁</Link>
-            <Link href="/history" className="hover:text-green-200 transition-colors">時光走廊</Link>
-            <Link href="/map" className="hover:text-green-200 transition-colors">企業地圖</Link>
-            <Link href="/events" className="text-yellow-300 hover:text-yellow-200 transition-colors">活動報名</Link>
-            
+            <Link href="/" className={`${pathname === '/' ? 'text-yellow-300' : 'text-white'} hover:text-green-200 transition-colors`}>首頁</Link>
+            <Link href="/history" className={`${pathname === '/history' ? 'text-yellow-300' : 'text-white'} hover:text-green-200 transition-colors`}>時光走廊</Link>
+            <Link href="/map" className={`${pathname === '/map' ? 'text-yellow-300' : 'text-white'} hover:text-green-200 transition-colors`}>企業地圖</Link>
+            <Link href="/events" className={`${pathname === '/events' ? 'text-yellow-300' : 'text-white'} hover:text-green-200 transition-colors`}>活動報名</Link>
+            <Link href="/branches" className={`${pathname === '/branches' ? 'text-yellow-300' : 'text-white'} hover:text-green-200 transition-colors`}>分會據點</Link>
+
             <div className="w-px h-4 bg-green-700"></div>
             
             {user ? (
@@ -95,7 +95,6 @@ export default function Navbar() {
               <Link href="/login" className="hover:text-green-200 transition-colors">會員登入</Link>
             )}
             
-            {/* 改為按鈕點擊觸發攔截 */}
             <button 
               onClick={handleMapJoinClick}
               className="bg-orange-500 text-white px-6 py-2.5 rounded-full font-black hover:bg-orange-600 transition-all shadow-md active:scale-95 text-xs"
@@ -118,10 +117,11 @@ export default function Navbar() {
 
       <div className={`fixed inset-0 bg-black/70 z-[55] transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMenuOpen(false)} />
       <div className={`fixed inset-y-0 right-0 z-[60] w-72 bg-[#002200] shadow-2xl p-8 pt-24 space-y-6 transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <Link href="/" className="block text-lg font-black text-white" onClick={() => setIsMenuOpen(false)}>首頁</Link>
-        <Link href="/history" className="block text-lg font-black text-white" onClick={() => setIsMenuOpen(false)}>時光走廊</Link>
-        <Link href="/map" className="block text-lg font-black text-white" onClick={() => setIsMenuOpen(false)}>企業地圖</Link>
-        <Link href="/events" className="block text-lg font-black text-yellow-300" onClick={() => setIsMenuOpen(false)}>活動報名</Link>
+        <Link href="/" className={`block text-lg font-black ${pathname === '/' ? 'text-yellow-300' : 'text-white'}`} onClick={() => setIsMenuOpen(false)}>首頁</Link>
+        <Link href="/history" className={`block text-lg font-black ${pathname === '/history' ? 'text-yellow-300' : 'text-white'}`} onClick={() => setIsMenuOpen(false)}>時光走廊</Link>
+        <Link href="/map" className={`block text-lg font-black ${pathname === '/map' ? 'text-yellow-300' : 'text-white'}`} onClick={() => setIsMenuOpen(false)}>企業地圖</Link>
+        <Link href="/events" className={`block text-lg font-black ${pathname === '/events' ? 'text-yellow-300' : 'text-white'}`} onClick={() => setIsMenuOpen(false)}>活動報名</Link>
+        <Link href="/branches" className={`block text-lg font-black ${pathname === '/branches' ? 'text-yellow-300' : 'text-white'}`} onClick={() => setIsMenuOpen(false)}>分會據點</Link>
         
         <div className="h-px w-full bg-green-900 my-6 opacity-50"></div>
         
