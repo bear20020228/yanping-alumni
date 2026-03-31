@@ -14,9 +14,9 @@ export default function RegisterPage() {
     email: '', password: '',
     fullName: '', gender: '', birthdate: '', nationalId: '',
     gradYearRoc: '', gradDept: '',
+    highestEdu: '', university: '', department: '', experience: '', currentJob: '',
     mobilePhone: '', homePhone: '', companyPhone: '',
     zipCode: '', address: '',
-    highestEdu: '', experience: '', currentJob: '',
     membershipType: '', bankLast5: ''
   });
 
@@ -52,8 +52,10 @@ export default function RegisterPage() {
             zip_code: formData.zipCode,
             address: formData.address,
             highest_education: formData.highestEdu,
+            university: formData.university,
+            department: formData.department,
             experience: formData.experience,
-            industry: formData.currentJob, // 將現職映射至 industry
+            industry: formData.currentJob, 
             membership_type: formData.membershipType,
             bank_last_5: formData.bankLast5,
             status: 'pending',
@@ -157,6 +159,7 @@ export default function RegisterPage() {
                   </select>
                 </div>
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">最高學歷 <span className="text-red-500">*</span></label>
@@ -176,8 +179,23 @@ export default function RegisterPage() {
                     onChange={(e) => setFormData({...formData, currentJob: e.target.value})} />
                 </div>
               </div>
+
+              {/* 新增：大學與科系 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">就讀 / 畢業大學 (選填)</label>
+                  <input type="text" placeholder="例：台灣大學" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+                    onChange={(e) => setFormData({...formData, university: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">就讀 / 畢業科系 (選填)</label>
+                  <input type="text" placeholder="例：資訊工程學系" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
+                    onChange={(e) => setFormData({...formData, department: e.target.value})} />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">經歷</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">經歷 (選填)</label>
                 <input type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#003366] bg-white text-slate-900" 
                   onChange={(e) => setFormData({...formData, experience: e.target.value})} />
               </div>
